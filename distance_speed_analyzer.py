@@ -3,9 +3,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import RectangleSelector
 import mplcursors
+import math
+import cv2
 
-df1 = pd.read_csv('distance_speed_u9.csv')
-df2 = pd.read_csv('distance_speed_su7.csv')
+file1 = 'distance_speed_su7u.csv'
+file2 = 'distance_speed_u9x.csv'
+
+video_path1 = "u9x.mp4"
+video_path2 = "su7u.mp4"
+cap1 = cv2.VideoCapture(video_path1)
+cap2 = cv2.VideoCapture(video_path2)
+
+cv2.namedWindow(video_path1, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+
+cv2.namedWindow(video_path2, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+
+def show_frame(frame_idx1, frame_idx2):
+    if frame_idx1 > cap1.get(cv2.CAP_PROP_FRAME_COUNT):
+        frame_idx1 = cap1.get(cv2.CAP_PROP_FRAME_COUNT) - 1
+        
+    if frame_idx1 < 0:
+        frame_idx1 = 0
+    
+    cap1.set(cv2.CAP_PROP_POS_FRAMES, frame_idx1)
+    
+    _, frame1 = cap1.read()
+    cv2.imshow(video_path1, frame1)
+    
+    if frame_idx2 > cap2.get(cv2.CAP_PROP_FRAME_COUNT):
+        frame_idx2 = cap2.get(cv2.CAP_PROP_FRAME_COUNT) - 1
+        
+    if frame_idx2 < 0:
+        frame_idx2 = 0
+    
+    cap2.set(cv2.CAP_PROP_POS_FRAMES, frame_idx2)
+    
+    _, frame2 = cap2.read()
+    cv2.imshow(video_path2, frame2)
+    
+df1 = pd.read_csv(file1)
+df2 = pd.read_csv(file2)
 
 original_data = [df1.copy(), df2.copy()]
 offsets = [0.0, 0.0]
@@ -14,8 +51,12 @@ delta_texts = []
 
 # 初始化图形
 fig, ax = plt.subplots()
-line1, = ax.plot(df1['distance'], df1['speed'], label='Curve 1', picker=True)
-line2, = ax.plot(df2['distance'], df2['speed'], label='Curve 2', picker=True)
+line1, = ax.plot(df1['distance'], df1['speed'], label=file1, picker=True)
+line2, = ax.plot(df2['distance'], df2['speed'], label=file2, picker=True)
+
+line1.frame = df1['frame']
+line2.frame = df2['frame']
+
 lines = [line1, line2]
 
 ax.set_xlim(min(df1['distance'].min(), df2['distance'].min()),
@@ -100,20 +141,35 @@ def on_key(event):
         fig.canvas.draw_idle()
         print("Cleared all time annotations")
 
-for line in lines:
-    cursor = mplcursors.cursor(line, hover=mplcursors.HoverMode.Transient)
-    @cursor.connect("add")
-    def on_add(sel, line=line):  # 绑定当前 line
-        x, y = sel.target
-        sel.annotation.set_text(f"x = {x:.2f} m\nv = {y:.2f} km/h")
+cursor = mplcursors.cursor(lines, hover=mplcursors.HoverMode.Transient)
 
-        # 设置科技风格 + 曲线颜色匹配
-        sel.annotation.get_bbox_patch().set(fc=line.get_color(), alpha=0.8)
-        sel.annotation.get_bbox_patch().set_edgecolor(line.get_color())
-        sel.annotation.set_color("white")
-        sel.annotation.set_fontsize(9)
-        sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
+@cursor.connect("add")
+def on_add(sel):
+    x, y = sel.target
+    
+    idx = int(sel.index)
+    other_line = line2 if math.fabs(line1.get_xdata()[idx] - x) < math.fabs(line2.get_xdata()[idx] - x)  else line1
+    
+    sel.annotation.set_text(f"x:{x}, {line1.get_xdata()[idx]}, {line2.get_xdata()[idx]}")
+    
+    other_distances = other_line.get_xdata()
+    other_idx = int(np.argmin(np.abs(other_distances - x)))
+    
+    other_speed = other_line.get_ydata()[other_idx]
         
+    sel.annotation.set_text(f"distance = {x:.2f} m\nv1 = {y:.2f} km/h\n v2 = {other_speed:.2f} km/h")
+
+    sel.annotation.get_bbox_patch().set(fc="#4f4f4f", alpha=0.6)
+    # sel.annotation.get_bbox_patch().set_edgecolor(line.get_color())
+    sel.annotation.set_color("white")
+    sel.annotation.set_fontsize(9)
+    sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
+    
+    if math.fabs(line1.get_xdata()[idx] - x) < math.fabs(line2.get_xdata()[idx] - x):
+        show_frame(idx, other_idx)
+    else:
+        show_frame(other_idx, idx)
+
 selector = RectangleSelector(ax, on_select,
                              useblit=False,
                              button=[1],
