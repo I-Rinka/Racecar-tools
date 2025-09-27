@@ -6,8 +6,8 @@ import mplcursors
 import math
 import cv2
 
-file1 = 'distance_speed_su7u.csv'
-file2 = 'distance_speed_u9x.csv'
+file1 = 'distance_speed_u9x.mp4.csv'
+file2 = 'distance_speed_su7u.mp4.csv'
 
 video_path1 = "u9x.mp4"
 video_path2 = "su7u.mp4"
@@ -15,7 +15,6 @@ cap1 = cv2.VideoCapture(video_path1)
 cap2 = cv2.VideoCapture(video_path2)
 
 cv2.namedWindow(video_path1, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
-
 cv2.namedWindow(video_path2, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
 
 def show_frame(frame_idx1, frame_idx2):
