@@ -9,7 +9,6 @@ import numpy as np
 class VisCanvas(FigureCanvas):
     def __init__(self):
         self.fig, self.ax = plt.subplots()
-        self.fig.canvas.mpl_connect('pick_event', self.on_pick)
         super().__init__(self.fig)
         
         self.delta_texts = []
@@ -30,6 +29,11 @@ class VisCanvas(FigureCanvas):
             useblit=True, interactive=True,
             button=[1], minspanx=5, minspany=5, spancoords='pixels'
         )
+        
+        self.mpl_connect('pick_event', self.on_pick)
+        self.mpl_connect("scroll_event", self.on_scroll)
+        self.mpl_connect('motion_notify_event', self.on_mouse_move)
+        self.press_ctrl = False
 
     # 直接读取x坐标，使拖动更平滑
     def on_mouse_move(self, event):
@@ -45,8 +49,6 @@ class VisCanvas(FigureCanvas):
         
         if self.cursor is not None:
             self.cursor.remove()
-
-        self.figure.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
         self.cursor = mplcursors.cursor([i.line for i in self.instances], hover=mplcursors.HoverMode.Transient)
         @self.cursor.connect("add")
@@ -67,19 +69,46 @@ class VisCanvas(FigureCanvas):
                 i.draw_point(distance)
                 i.update_video()
             
-
         return analyzer
     
     def on_pick(self, event):
         lines = [i.line for i in self.instances]
         if event.artist in lines:
-            # print(event.artist)
             self.selected_index = lines.index(event.artist)
-            print(self.selected_index)
 
     def update_plot(self):
         self.fig.canvas.draw_idle()
+        
+    def on_scroll(self, event):
+        ctrl_pressed = self.press_ctrl
+        if not ctrl_pressed:
+            return
 
+        base_scale = 1.2
+        xdata = event.xdata
+        ydata = event.ydata
+        if xdata is None or ydata is None:
+            return
+
+        cur_xlim = self.ax.get_xlim()
+        cur_ylim = self.ax.get_ylim()
+        if event.button == "up":
+            scale_factor = 1 / base_scale
+        elif event.button == "down":
+            scale_factor = base_scale
+        else:
+            print("no")
+            scale_factor = 1.0
+
+        new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
+        new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
+        relx = (xdata - cur_xlim[0]) / (cur_xlim[1] - cur_xlim[0])
+        rely = (ydata - cur_ylim[0]) / (cur_ylim[1] - cur_ylim[0])
+
+        self.ax.set_xlim(xdata - relx * new_width, xdata + (1 - relx) * new_width)
+        self.ax.set_ylim(ydata - rely * new_height, ydata + (1 - rely) * new_height)
+        self.draw_idle()
+        
     def on_select(self, eclick, erelease):
         if not len(self.instances) == 2:
             return

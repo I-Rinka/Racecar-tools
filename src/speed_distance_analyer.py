@@ -43,7 +43,11 @@ class PltMainWindow(QMainWindow):
         self.splitter.addWidget(self.bottom_splitter)
      
         self.playing = False
-
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key.Key_Control:
+            self.canvas.press_ctrl = False
+        return super().keyReleaseEvent(event)
+    
     def keyPressEvent(self, event):
         step = 10
         idx = self.canvas.selected_index
@@ -59,6 +63,9 @@ class PltMainWindow(QMainWindow):
                 txt.remove()
             self.canvas.delta_texts.clear()
             self.canvas.draw()
+            
+        if event.key() == Qt.Key.Key_Control:
+            self.canvas.press_ctrl = True
             
         if event.key() == Qt.Key_Space:
             self.playing = not self.playing
