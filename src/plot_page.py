@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 
-from windowed_speed_distance_analyzer import PltMainWindow
+from speed_distance_analyer import PltMainWindow
 import pandas as pd
 
 
