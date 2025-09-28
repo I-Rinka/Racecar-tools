@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from sortedcontainers import SortedDict
 from core.video_wrapper import VideoCanvas
+import numpy as np
 
 import os
 
@@ -10,6 +11,18 @@ def extract_name_without_extension(path):
     base = os.path.basename(path)
     name,_ = os.path.splitext(base)
     return name
+
+def local_slope(x_arr, y_arr, idx, window=5):
+    n = len(x_arr)
+    i0 = max(0, idx - window)
+    i1 = min(n - 1, idx + window)
+    xs = x_arr[i0:i1+1]
+    ys = y_arr[i0:i1+1]
+    if len(xs) < 2:
+        return 0.0
+    A = np.vstack([xs, np.ones_like(xs)]).T
+    slope, _ = np.linalg.lstsq(A, ys, rcond=None)[0]
+    return slope
 
 class SDAnalyzer():
     def __init__(self, axes:Axes, speed_distance_path:str, name: str=None):
@@ -81,6 +94,12 @@ class SDAnalyzer():
     def inc_current_index(self):
         self.current_index = self.current_index + 1
 
+    def get_current_accel(self, window = 5):
+        speeds = self.df["speed"].values
+        dv_dx = local_slope(self.df["distance"].values, speeds, self.current_index, window=window)
+        v0 = speeds[self.current_index]
+        return v0 * dv_dx * 25 / 324
+        
     def get_initial_frame(self) -> int:
         return self.initial_frame
 

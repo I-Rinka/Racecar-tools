@@ -52,10 +52,15 @@ class VisCanvas(FigureCanvas):
 
         self.cursor = mplcursors.cursor([i.line for i in self.instances], hover=mplcursors.HoverMode.Transient)
         @self.cursor.connect("add")
-        def on_hover(sel):
+        def on_hover(sel):            
             distance = self.mouse_distance
+            for i in self.instances:
+                i.set_current_index_by_distance(distance)
+                i.draw_point(distance)
+                i.update_video()
+            
             annotation_text = \
-                f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_accel(distance):.2f}" for i, item in enumerate(self.instances))
+                f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_current_accel()/ 9.8:.2f}" for i, item in enumerate(self.instances))
 
             sel.annotation.set_text(annotation_text)
             sel.annotation.get_bbox_patch().set(fc="#4f4f4f", alpha=0.6)
@@ -64,11 +69,7 @@ class VisCanvas(FigureCanvas):
             sel.annotation.set_fontsize(9)
             sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
             
-            for i in self.instances:
-                i.set_current_index_by_distance(distance)
-                i.draw_point(distance)
-                i.update_video()
-            
+
         return analyzer
     
     def on_pick(self, event):
