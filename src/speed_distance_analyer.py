@@ -45,21 +45,21 @@ class PltMainWindow(QMainWindow):
         self.playing = False
 
     def keyPressEvent(self, event):
-        # step = 1
-        # idx = selected_index[0]
-        # if event.key == 'left':
-        #     offsets[idx] -= step
-        #     self.update_plot()
-        # elif event.key == 'right':
-        #     offsets[idx] += step
-        #     self.update_plot()
-        # elif event.key == 'escape':
-        #     for txt in delta_texts:
-        #         txt.remove()
-        #     delta_texts.clear()
-        #     self.fig.canvas.draw_idle()
-        #     print("Cleared all time annotations")
-        # elif event.key() == Qt.Key_Space:
+        step = 10
+        idx = self.canvas.selected_index
+        if idx >= 0:
+            if event.key() == Qt.Key_Left:
+                self.canvas.instances[idx].adjust_distance(-step)
+            elif event.key() == Qt.Key_Right:
+                self.canvas.instances[idx].adjust_distance(step)
+            self.canvas.draw()
+            
+        if event.key() == Qt.Key.Key_Escape:
+            for txt in self.canvas.delta_texts:
+                txt.remove()
+            self.canvas.delta_texts.clear()
+            self.canvas.draw()
+            
         if event.key() == Qt.Key_Space:
             self.playing = not self.playing
             for v in self.videos:

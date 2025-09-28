@@ -38,7 +38,8 @@ class SDAnalyzer():
     def adjust_distance(self, step):
         self.df['distance'] = self.df['distance'] + step
         self.line.set_data(self.df['distance'], self.df['speed'])
-
+        self.build_sd()
+        
     def draw_point(self, distance=-1):
         if self.point is None:
             self.point, = self.ax.plot([], [], 'o', markersize=6, alpha=0.6,

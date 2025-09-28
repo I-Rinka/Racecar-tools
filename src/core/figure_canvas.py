@@ -19,7 +19,7 @@ class VisCanvas(FigureCanvas):
         self.ax.set_ylabel("Speed(km/h)")
         self.ax.set_title("Select region to calculate Δt = t1 - t2")
 
-        self.selected_index = None
+        self.selected_index = -1
 
         self.cursor = None
 
@@ -73,7 +73,9 @@ class VisCanvas(FigureCanvas):
     def on_pick(self, event):
         lines = [i.line for i in self.instances]
         if event.artist in lines:
+            # print(event.artist)
             self.selected_index = lines.index(event.artist)
+            print(self.selected_index)
 
     def update_plot(self):
         self.fig.canvas.draw_idle()
