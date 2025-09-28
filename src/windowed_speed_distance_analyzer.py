@@ -1,7 +1,7 @@
 import sys
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QSplitter
+from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -10,6 +10,7 @@ from matplotlib.widgets import RectangleSelector
 import mplcursors
 import pandas as pd
 import math
+from scipy.signal import savgol_filter
 
 file1 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_u9x.mp4.csv'
 file2 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_su7u.mp4.csv'
@@ -55,6 +56,8 @@ class PltMainWindow(QMainWindow):
         # ---- Matplotlib figure ----
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.setMinimumHeight(200)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         splitter.addWidget(self.canvas)
         self.fig.canvas.mpl_connect('pick_event', self.on_pick)
         
@@ -68,14 +71,12 @@ class PltMainWindow(QMainWindow):
             button=[1], minspanx=5, minspany=5, spancoords='pixels'
         )
         self.video_label1 = QLabel()
+        self.video_label1.sizePolicy().setVerticalPolicy(QSizePolicy.Preferred)
         bottom_splitter.addWidget(self.video_label1)
         
         self.video_label2 = QLabel()
+        self.video_label2.sizePolicy().setVerticalPolicy(QSizePolicy.Preferred)
         bottom_splitter.addWidget(self.video_label2)
-
-        # ---- Splitter 比例 ----
-        splitter.setSizes([400, 400])  # 上下各一半
-        bottom_splitter.setSizes([500,500])
         
         line1, = self.ax.plot(df1['distance'], df1['speed'], label=file1, picker=True)
         line2, = self.ax.plot(df2['distance'], df2['speed'], label=file2, picker=True)
@@ -90,8 +91,11 @@ class PltMainWindow(QMainWindow):
         self.ax.set_xlabel("Distance (m)")
         self.ax.set_ylabel("Speed (km/h)")
         self.ax.set_title("Select region to calculate Δt = t1 - t2")
-        self.ax.legend()
+        # self.ax.legend()
         self.canvas.draw()
+
+        self.distance_index1 = 0
+        self.distance_index2 = 0
         
         # ---- Hover tooltips ----
         self.cursor = mplcursors.cursor(self.lines, hover=mplcursors.HoverMode.Transient)
@@ -108,29 +112,54 @@ class PltMainWindow(QMainWindow):
             other_idx = int(np.argmin(np.abs(other_distances - x)))
             
             other_speed = other_line.get_ydata()[other_idx]
-                
-            sel.annotation.set_text(f"distance = {x:.2f} m\nv1 = {y:.2f} km/h\n v2 = {other_speed:.2f} km/h")
 
+            this_a = 0
+            other_a = 0
+
+            if math.fabs(line1.get_xdata()[idx] - x) < math.fabs(line2.get_xdata()[idx] - x):
+                self.show_frame(df1["frame"][idx], df2["frame"][other_idx])
+                self.distance_index1 = idx
+                self.distance_index2 = other_idx
+                self.drawPoint(x, y, self.moving_point1)
+                self.drawPoint(x, other_speed, self.moving_point2)
+
+            else:
+                self.show_frame(df1["frame"][other_idx], df2["frame"][idx])
+                self.distance_index1 = other_idx
+                self.distance_index2 = idx
+                self.drawPoint(x, y, self.moving_point2)
+                self.drawPoint(x, other_speed, self.moving_point1)
+                
+            sel.annotation.set_text(f"distance = {x:.2f} m\nv1 = {y:.2f} km/h, a = {this_a / 9.8}g\n v2 = {other_speed:.2f} km/h,  a = {other_a / 9.8}g")
             sel.annotation.get_bbox_patch().set(fc="#4f4f4f", alpha=0.6)
             # sel.annotation.get_bbox_patch().set_edgecolor(line.get_color())
             sel.annotation.set_color("white")
             sel.annotation.set_fontsize(9)
             sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
-            
-            if math.fabs(line1.get_xdata()[idx] - x) < math.fabs(line2.get_xdata()[idx] - x):
-                self.show_frame(idx, other_idx)
-            else:
-                self.show_frame(other_idx, idx)
-
         # ---- Video QLabel ----
+        self.playing = False
 
+        self.timer1 = QTimer()
+        self.timer1.timeout.connect(self.next_frame1)
+        self.timer1.start(int(cap1.get(cv2.CAP_PROP_FPS)))  # ~30fps
 
-        # # ---- OpenCV video capture ----
-        # self.cap = cv2.VideoCapture(video_path)
-        # self.timer = QTimer()
-        # self.timer.timeout.connect(self.next_frame)
-        # self.playing = True
-        # self.timer.start(30)  # ~30fps
+        self.timer2 = QTimer()
+        self.timer2.timeout.connect(self.next_frame2)
+        self.timer2.start(int(cap2.get(cv2.CAP_PROP_FPS)))  # ~30fps
+
+        self.moving_point1, = self.ax.plot([], [], 'o', markersize=6, alpha=0.6,
+                                        markerfacecolor=self.lines[0].get_color(),
+                                        markeredgecolor='white',
+                                        markeredgewidth=1)
+
+        self.moving_point2, = self.ax.plot([], [], 'o', markersize=6, alpha=0.6,
+                                        markerfacecolor=self.lines[1].get_color(),
+                                        markeredgecolor='white',
+                                        markeredgewidth=1)
+
+    def drawPoint(self, distance, speed, point):
+        point.set_data([distance], [speed])
+
 
     def keyPressEvent(self, event):
         # 空格键暂停/继续
@@ -148,7 +177,44 @@ class PltMainWindow(QMainWindow):
             delta_texts.clear()
             self.fig.canvas.draw_idle()
             print("Cleared all time annotations")
-    
+        elif event.key() == Qt.Key_Space:
+            self.playing = not self.playing
+            
+    def next_frame1(self):
+        if self.playing == False:
+            return
+        _, frame1 = cap1.read()
+        frame1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB)
+
+        h, w, ch = frame1.shape
+        qimg = QImage(frame1.data, w, h, ch * w, QImage.Format_RGB888)
+        self.video_label1.setPixmap(QPixmap.fromImage(qimg.scaled(
+            self.video_label1.size(), 
+            Qt.KeepAspectRatio
+        )))
+        distance = df1['distance'][self.distance_index1]
+        speed = df1['speed'][self.distance_index1]
+        self.distance_index1 = self.distance_index1 + 1
+        self.drawPoint(distance, speed, self.moving_point1)
+        self.canvas.draw()
+        
+        
+    def next_frame2(self):
+        if self.playing == False:
+            return
+        _, frame2 = cap2.read()
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
+        h, w, ch = frame2.shape
+        qimg = QImage(frame2.data, w, h, ch * w, QImage.Format_RGB888)
+        self.video_label2.setPixmap(QPixmap.fromImage(qimg.scaled(
+            self.video_label1.size(), 
+            Qt.KeepAspectRatio
+        )))
+        distance = df2['distance'][self.distance_index2]
+        speed = df2['speed'][self.distance_index2]
+        self.distance_index2 = self.distance_index2 + 1
+        self.drawPoint(distance, speed, self.moving_point2)
+
     def update_plot(self):
         for i in [0, 1]:
             x = original_data[i]['distance'].values + offsets[i]
@@ -156,7 +222,37 @@ class PltMainWindow(QMainWindow):
             self.lines[i].set_data(x, y)
         self.fig.canvas.draw_idle()
 
-    def show_frame(self,frame_idx1, frame_idx2):
+    def resizeEvent(self, event):
+        # 窗口尺寸变化时更新图像尺寸
+        self.update_frame()
+        super().resizeEvent(event)
+
+    def update_frame(self):
+        current_index = cap1.get(cv2.CAP_PROP_POS_FRAMES)
+        _, frame1 = cap1.read()
+        frame1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB)
+        cap1.set(cv2.CAP_PROP_POS_FRAMES, current_index)
+
+        current_index = cap2.get(cv2.CAP_PROP_POS_FRAMES)
+        _, frame2 = cap2.read()
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
+        cap2.set(cv2.CAP_PROP_POS_FRAMES, current_index)
+
+
+        h, w, ch = frame1.shape
+        qimg = QImage(frame1.data, w, h, ch * w, QImage.Format_RGB888)
+        self.video_label1.setPixmap(QPixmap.fromImage(qimg.scaled(
+            self.video_label1.size(), 
+            Qt.KeepAspectRatio
+        )))
+
+        h, w, ch = frame2.shape
+        qimg = QImage(frame2.data, w, h, ch * w, QImage.Format_RGB888)
+        self.video_label2.setPixmap(QPixmap.fromImage(qimg.scaled(
+            self.video_label2.size(), 
+            Qt.KeepAspectRatio)))
+
+    def show_frame(self, frame_idx1, frame_idx2):
             if frame_idx1 > cap1.get(cv2.CAP_PROP_FRAME_COUNT):
                 frame_idx1 = cap1.get(cv2.CAP_PROP_FRAME_COUNT) - 1
                 
@@ -164,9 +260,6 @@ class PltMainWindow(QMainWindow):
                 frame_idx1 = 0
             
             cap1.set(cv2.CAP_PROP_POS_FRAMES, frame_idx1)
-            
-            _, frame1 = cap1.read()
-            # cv2.imshow(video_path1, frame1)
             
             if frame_idx2 > cap2.get(cv2.CAP_PROP_FRAME_COUNT):
                 frame_idx2 = cap2.get(cv2.CAP_PROP_FRAME_COUNT) - 1
@@ -176,20 +269,8 @@ class PltMainWindow(QMainWindow):
             
             cap2.set(cv2.CAP_PROP_POS_FRAMES, frame_idx2)
             
-            _, frame2 = cap2.read()
-            # cv2.imshow(video_path2, frame2)
-            
-            frame1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB)
-            h, w, ch = frame1.shape
-            qimg = QImage(frame1.data, w, h, ch * w, QImage.Format_RGB888)
-            self.video_label1.setPixmap(QPixmap.fromImage(qimg))
-            
-            frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
-            h, w, ch = frame2.shape
-            qimg = QImage(frame2.data, w, h, ch * w, QImage.Format_RGB888)
-            self.video_label2.setPixmap(QPixmap.fromImage(qimg))
+            self.update_frame()
         
-
     def on_select(self, eclick, erelease):
         x1 = min(eclick.xdata, erelease.xdata)
         x2 = max(eclick.xdata, erelease.xdata)
@@ -234,8 +315,8 @@ class PltMainWindow(QMainWindow):
             print(f"Selected curve {selected_index[0]+1}")
 
 
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     window = MainWindow()
-#     window.show()
-#     sys.exit(app.exec_())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = PltMainWindow()
+    window.show()
+    sys.exit(app.exec_())

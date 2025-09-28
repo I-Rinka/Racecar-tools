@@ -1,0 +1,108 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from sortedcontainers import SortedDict
+from core.video_wrapper import VideoCanvas
+
+import os
+
+def extract_name_without_extension(path):
+    base = os.path.basename(path)
+    name,_ = os.path.splitext(base)
+    return name
+
+class SDAnalyzer():
+    def __init__(self, axes:Axes, speed_distance_path:str, name: str=None):
+        if name is None:
+            name = extract_name_without_extension(speed_distance_path)
+        self.name = name
+        self.ax = axes
+        self.df = pd.read_csv(speed_distance_path)
+
+        self.initial_frame = self.df['frame'][0]
+
+        self.line, = self.ax.plot(self.df['distance'], self.df['speed'], label=name, picker=True)
+        self.point = None
+
+        self.build_sd()
+        self.current_index = 0
+        self.videoCanvas = None
+
+    """rebuild sd after adjust distance"""
+    def build_sd(self):
+        self._sd = SortedDict()
+        for i,distance in enumerate(self.df['distance']):
+            if self._sd.get(distance) is None:
+                self._sd[distance] = i 
+
+    def adjust_distance(self, step):
+        self.df['distance'] = self.df['distance'] + step
+        self.line.set_data(self.df['distance'], self.df['speed'])
+
+    def draw_point(self, distance=-1):
+        if self.point is None:
+            self.point, = self.ax.plot([], [], 'o', markersize=6, alpha=0.6,
+                                    markerfacecolor=self.line.get_color(),
+                                    markeredgecolor='white',
+                                    markeredgewidth=1)
+        if distance == -1:
+            self.point.set_data([self.df["distance"][self.current_index]], [self.df['speed'][self.current_index]])
+            return
+
+        index = self.get_index(distance)
+        if index:
+            self.point.set_data([distance], [self.df['speed'][index]])
+    
+    def get_speed(self, distance:float):
+        index = self.get_index(distance)
+        if index and self.df.get('speed') is not None:
+            return self.df['speed'][index]
+        return 0
+
+    def get_frame_index(self, distance:float):
+        index = self.get_index(distance)
+        if index and self.df.get('frame') is not None:
+            return self.df['frame'][index]
+        return 0
+    
+    def add_video_canvas(self, video: VideoCanvas):
+        self.videoCanvas = video
+    
+    def update_video(self):
+        if self.videoCanvas is not None:
+            self.videoCanvas.update_frame(self.df["frame"][self.current_index])
+
+    def set_current_index_by_distance(self, distance:float):
+        idx = self.get_index(distance)
+        self.current_index = idx if idx is not None else 0
+        return self.df['distance'][idx]
+    
+    def inc_current_index(self):
+        self.current_index = self.current_index + 1
+
+    def get_initial_frame(self) -> int:
+        return self.initial_frame
+
+    def get_accel(self, distance:float):
+        index = self.get_index(distance)
+        if index and self.df.get('acceleration') is not None:
+            return self.df['acceleration'][index]
+        return 0
+
+    def get_index(self, distance:float):
+        keys = self._sd.keys()
+        index = self._sd.bisect_left(distance)
+        candidates = []
+
+        if index < len(keys):
+            candidates.append(keys[index])
+        if index < len(keys) - 1:
+            candidates.append(keys[index + 1])
+        if index > 0:
+            candidates.append(keys[index - 1])
+
+        if not candidates:
+            return None
+
+        closest_key = min(candidates, key=lambda k: abs(k - distance))
+        return self._sd[closest_key]
