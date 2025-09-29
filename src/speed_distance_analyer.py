@@ -7,8 +7,8 @@ from PyQt5.QtCore import QTimer, Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from scipy.signal import savgol_filter
-from core.figure_canvas import VisCanvas
-from core.video_wrapper import VideoCanvas
+from widgets.figure_canvas import VisCanvas
+from widgets.video_wrapper import VideoCanvas
 from typing import List
 
 file1 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_u9x.mp4.csv'
@@ -78,35 +78,34 @@ class PltMainWindow(QMainWindow):
 
         super().resizeEvent(event)
     
-    def show(self):
+    def regist_plt_point_animation(self):
         fps = [v.video.get_frame_rate() for v in self.videos]
         min_idx = int(np.argmin(fps))
         for instance in self.canvas.instances:
             vis = instance
-            def func(s):
+            def point_update(s):
                 vis.inc_current_index()
                 vis.draw_point()
-            instance.videoCanvas.add_update_func(func)
+            instance.videoCanvas.register_frame_update_func(point_update)
         
-        def func_slowest(s):
+        def slowest_update_to_draw(s):
             vis = self.canvas.instances[min_idx]
             vis.inc_current_index()
             vis.draw_point()
             self.canvas.draw()
 
-        self.canvas.instances[min_idx].videoCanvas.add_update_func(func_slowest)
-
-        super().show()
+        self.canvas.instances[min_idx].videoCanvas.register_frame_update_func(slowest_update_to_draw)
 
     def add_instance(self, path, video_path):
         video_canvas = VideoCanvas(video_path)
         self.videos.append(video_canvas)
         sd_instance = self.canvas.add_instance(path)
         initial_idx = sd_instance.get_initial_frame()
-        sd_instance.add_video_canvas(video_canvas)
+        sd_instance.connect_video_canvas(video_canvas)
         video_canvas.set_frame_index(initial_idx)
         self.bottom_splitter.addWidget(video_canvas)
         
+        self.regist_plt_point_animation()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

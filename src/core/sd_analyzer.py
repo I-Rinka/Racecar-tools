@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from sortedcontainers import SortedDict
-from core.video_wrapper import VideoCanvas
+from widgets.video_wrapper import VideoCanvas
 import numpy as np
 
 import os
@@ -79,7 +79,7 @@ class SDAnalyzer():
             return self.df['frame'][index]
         return 0
     
-    def add_video_canvas(self, video: VideoCanvas):
+    def connect_video_canvas(self, video: VideoCanvas):
         self.videoCanvas = video
     
     def update_video(self):

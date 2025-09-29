@@ -47,7 +47,7 @@ class VideoCanvas(QLabel):
     def set_playing(self, is_palying):
         self.playing = is_palying
 
-    def add_update_func(self, func):
+    def register_frame_update_func(self, func):
         self.func = func
 
     def start_timer(self):
