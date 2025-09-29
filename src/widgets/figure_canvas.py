@@ -76,6 +76,7 @@ class VisCanvas(FigureCanvas):
             sel.annotation.set_fontsize(9)
             sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
 
+        self.ax.legend()
         return analyzer
     
     def on_pick(self, event):
