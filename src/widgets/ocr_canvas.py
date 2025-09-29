@@ -108,6 +108,5 @@ class OCRCanvas(QLabel):
             painter.setPen(pen)
             painter.drawRect(rect)
             
-    
     def get_size_h_w(self):
         return self.frame.shape[:2] 

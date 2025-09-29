@@ -7,6 +7,7 @@ import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r"C:/Users/I_Rin\AppData/Local/Programs/Tesseract-OCR/tesseract.exe"
 import re
 import math
+import pandas as pd
 
 video_path = r"u9x.mp4"
 instance_name = video_path.replace(".mp4", "")
@@ -55,8 +56,12 @@ class TimeSpeedProcessor():
         self.time_speed = []
         self.ez_ocr_able_to_process = True
         self.last_speed = -1
+        self.df = None
     
-    def process_frame(self, frame: cv2.Mat):
+    def process_frame(self, frame: cv2.Mat, frame_index = -1):
+        if frame_index == -1:
+            frame_index = self.index
+
         def func_err_cb1():
             print("Int data not work data")
             
@@ -77,10 +82,37 @@ class TimeSpeedProcessor():
             number = min(array, key=lambda v: abs(v - self.last_speed))
     
         self.last_speed = number
-        self.time_speed.append((self.index * self.time_interval, number))
+        self.time_speed.append((self.index * self.time_interval, number, frame_index))
         self.index += 1
         return number
+            
+    def get_df_data(self):
+        distance = [0]  # 初始距离为0
+        for i in range(1, len(self.time_speed)):
+            t0, v0, _ = self.time_speed[i - 1]
+            t1, v1, _ = self.time_speed[i]
+            v0_mps = v0 / 3.6
+            v1_mps = v1 / 3.6
+            delta_t = t1 - t0
+            s = distance[-1] + ((v0_mps + v1_mps) / 2) * delta_t
+            distance.append(s)
 
+        data = {
+            "frame": [self.time_speed[i][2] for i in range(len(self.time_speed))],
+            "speed": [self.time_speed[i][1] for i in range(len(self.time_speed))],
+            "distance": distance,
+            "time": [self.time_speed[i][0] for i in range(len(self.time_speed))]
+        }
+        
+        self.df = pd.DataFrame(data)
+        return self.df
+    
+    def write_csv(self, name="speed_distance.csv"):
+        if self.df is None:
+            self.get_df_data()
+        
+        self.df.to_csv(name, index=False, encoding="utf-8-sig")
+            
     def restart(self):
         self.index = 0
         self.time_speed.clear()

@@ -39,13 +39,17 @@ class ROIWindow(QMainWindow):
         if not self.ocr_canvas.video_is_end():
             frame = self.ocr_canvas.play_video()
             if self.ocr_canvas.roi_selected:
-                number = self.processor.process_frame(frame)
-                # print(number)
+                number = self.processor.process_frame(frame, self.ocr_canvas.frame_index - 1)
+                print(number) # get number
             
         else:
             self.timer.stop()
             
     def keyPressEvent(self, event):
+        if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
+            self.processor.write_csv()
+            self.timer.stop()
+            
         if event.key() == Qt.Key.Key_Left:
             self.ocr_canvas.video_paly_back()
             self.is_paused = True
@@ -63,7 +67,7 @@ class ROIWindow(QMainWindow):
             self.processor.restart()
             
             self.ocr_canvas.update()
-        
+            
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
