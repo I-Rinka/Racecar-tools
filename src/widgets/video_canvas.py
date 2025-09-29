@@ -35,7 +35,7 @@ class VideoCanvas(QLabel):
                 self.func(self)
 
     def update_frame(self, index:int = -1):
-        frame = self.video.get_next_frame() if index == -1 else self.video.get_frame(index)
+        frame = self.video.get_next_frame() if index == -1 else self.video.set_and_get_frame(index)
         if frame is None: return
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

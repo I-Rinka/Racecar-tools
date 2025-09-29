@@ -53,9 +53,9 @@ class PltMainWindow(QMainWindow):
         step = 10
         idx = self.canvas.selected_index
         if idx >= 0:
-            if event.key() == Qt.Key_Left:
+            if event.key() == Qt.Key.Key_Left:
                 self.canvas.analyzers[idx].adjust_distance(-step)
-            elif event.key() == Qt.Key_Right:
+            elif event.key() == Qt.Key.Key_Right:
                 self.canvas.analyzers[idx].adjust_distance(step)
             self.canvas.draw()
             
@@ -68,7 +68,7 @@ class PltMainWindow(QMainWindow):
         if event.key() == Qt.Key.Key_Control:
             self.canvas.press_ctrl = True
             
-        if event.key() == Qt.Key_Space:
+        if event.key() == Qt.Key.Key_Space:
             self.playing = not self.playing
             for v in self.videos:
                 v.set_playing(self.playing)

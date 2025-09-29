@@ -11,7 +11,7 @@ class VideoWrapper():
         if self.cap.get(cv2.CAP_PROP_FRAME_COUNT) > frame_index:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
 
-    def get_frame(self, frame_index:int):
+    def set_and_get_frame(self, frame_index:int):
         if self.cap.get(cv2.CAP_PROP_FRAME_COUNT) > frame_index:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
             _, frame = self.cap.read()
@@ -24,3 +24,6 @@ class VideoWrapper():
 
     def get_frame_rate(self):
         return self.cap.get(cv2.CAP_PROP_FPS)
+    
+    def is_opened(self):
+        return self.cap.isOpened()
