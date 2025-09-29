@@ -2,7 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from sortedcontainers import SortedDict
-from widgets.video_wrapper import VideoCanvas
 import numpy as np
 
 import os
@@ -39,7 +38,6 @@ class SDAnalyzer():
 
         self.build_sd()
         self.current_index = 0
-        self.videoCanvas = None
 
     """rebuild sd after adjust distance"""
     def build_sd(self):
@@ -79,12 +77,8 @@ class SDAnalyzer():
             return self.df['frame'][index]
         return 0
     
-    def connect_video_canvas(self, video: VideoCanvas):
-        self.videoCanvas = video
-    
-    def update_video(self):
-        if self.videoCanvas is not None:
-            self.videoCanvas.update_frame(self.df["frame"][self.current_index])
+    def get_current_frame_index(self):
+        return self.df["frame"][self.current_index]
 
     def set_current_index_by_distance(self, distance:float):
         idx = self.get_index(distance)

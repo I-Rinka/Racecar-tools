@@ -8,7 +8,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from scipy.signal import savgol_filter
 from widgets.figure_canvas import VisCanvas
-from widgets.video_wrapper import VideoCanvas
+from widgets.video_canvas import VideoCanvas
+from core.sd_analyzer import SDAnalyzer
 from typing import List
 
 file1 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_u9x.mp4.csv'
@@ -53,9 +54,9 @@ class PltMainWindow(QMainWindow):
         idx = self.canvas.selected_index
         if idx >= 0:
             if event.key() == Qt.Key_Left:
-                self.canvas.instances[idx].adjust_distance(-step)
+                self.canvas.analyzers[idx].adjust_distance(-step)
             elif event.key() == Qt.Key_Right:
-                self.canvas.instances[idx].adjust_distance(step)
+                self.canvas.analyzers[idx].adjust_distance(step)
             self.canvas.draw()
             
         if event.key() == Qt.Key.Key_Escape:
@@ -81,27 +82,31 @@ class PltMainWindow(QMainWindow):
     def regist_plt_point_animation(self):
         fps = [v.video.get_frame_rate() for v in self.videos]
         min_idx = int(np.argmin(fps))
-        for instance in self.canvas.instances:
+        for i,instance in enumerate(self.canvas.analyzers):
             vis = instance
             def point_update(s):
                 vis.inc_current_index()
                 vis.draw_point()
-            instance.videoCanvas.register_frame_update_func(point_update)
+            self.videos[i].register_frame_update_func(point_update)
         
+        # 只有一个函数更新，优化性能
         def slowest_update_to_draw(s):
-            vis = self.canvas.instances[min_idx]
+            vis = self.canvas.analyzers[min_idx]
             vis.inc_current_index()
             vis.draw_point()
             self.canvas.draw()
-
-        self.canvas.instances[min_idx].videoCanvas.register_frame_update_func(slowest_update_to_draw)
+        self.videos[min_idx].register_frame_update_func(slowest_update_to_draw)
 
     def add_instance(self, path, video_path):
         video_canvas = VideoCanvas(video_path)
         self.videos.append(video_canvas)
         sd_instance = self.canvas.add_instance(path)
         initial_idx = sd_instance.get_initial_frame()
-        sd_instance.connect_video_canvas(video_canvas)
+        
+        def update_video(vis:SDAnalyzer, i:int):
+            self.videos[i].update_frame(vis.get_current_frame_index())
+            
+        self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
         video_canvas.set_frame_index(initial_idx)
         self.bottom_splitter.addWidget(video_canvas)
         

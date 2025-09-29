@@ -12,7 +12,7 @@ class VisCanvas(FigureCanvas):
         super().__init__(self.fig)
         
         self.delta_texts = []
-        self.instances:List[SDAnalyzer] = []
+        self.analyzers:List[SDAnalyzer] = []
 
         self.ax.set_xlabel("Distance(m)")
         self.ax.set_ylabel("Speed(km/h)")
@@ -34,33 +34,40 @@ class VisCanvas(FigureCanvas):
         self.mpl_connect("scroll_event", self.on_scroll)
         self.mpl_connect('motion_notify_event', self.on_mouse_move)
         self.press_ctrl = False
+        self._analyzer_update_cb = []
 
     # 直接读取x坐标，使拖动更平滑
     def on_mouse_move(self, event):
         if event.inaxes != self.ax:  # 确保鼠标在目标坐标轴内
             return
         self.mouse_distance = event.xdata
+    
+    """func(instance,i)"""
+    def register_instance_on_hover(self, func, i):
+        self._analyzer_update_cb[i] = func
 
     def add_instance(self, file) -> SDAnalyzer:
         analyzer = SDAnalyzer(self.ax, speed_distance_path=file)
-        self.instances.append(analyzer)
-        max_distance = max(i.df['distance'].max() for i in self.instances)
+        self.analyzers.append(analyzer)
+        self._analyzer_update_cb.append(None)
+        max_distance = max(i.df['distance'].max() for i in self.analyzers)
         self.ax.set_xlim(0, max_distance)
         
         if self.cursor is not None:
             self.cursor.remove()
 
-        self.cursor = mplcursors.cursor([i.line for i in self.instances], hover=mplcursors.HoverMode.Transient)
+        self.cursor = mplcursors.cursor([i.line for i in self.analyzers], hover=mplcursors.HoverMode.Transient)
         @self.cursor.connect("add")
         def on_hover(sel):            
             distance = self.mouse_distance
-            for i in self.instances:
-                i.set_current_index_by_distance(distance)
-                i.draw_point(distance)
-                i.update_video()
+            for index,instance in enumerate(self.analyzers):
+                instance.set_current_index_by_distance(distance)
+                instance.draw_point(distance)
+                if self._analyzer_update_cb[index] is not None:
+                    self._analyzer_update_cb[index](instance, index)
             
             annotation_text = \
-                f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_current_accel()/ 9.8:.2f}" for i, item in enumerate(self.instances))
+                f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_current_accel()/ 9.8:.2f}" for i, item in enumerate(self.analyzers))
 
             sel.annotation.set_text(annotation_text)
             sel.annotation.get_bbox_patch().set(fc="#4f4f4f", alpha=0.6)
@@ -68,12 +75,11 @@ class VisCanvas(FigureCanvas):
             sel.annotation.set_color("white")
             sel.annotation.set_fontsize(9)
             sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
-            
 
         return analyzer
     
     def on_pick(self, event):
-        lines = [i.line for i in self.instances]
+        lines = [i.line for i in self.analyzers]
         if event.artist in lines:
             self.selected_index = lines.index(event.artist)
 
@@ -111,7 +117,7 @@ class VisCanvas(FigureCanvas):
         self.draw_idle()
         
     def on_select(self, eclick, erelease):
-        if not len(self.instances) == 2:
+        if not len(self.analyzers) == 2:
             return
         
         x1 = min(eclick.xdata, erelease.xdata)
@@ -130,8 +136,8 @@ class VisCanvas(FigureCanvas):
             mask = (x_shifted >= x1) & (x_shifted <= x2)
             return x_shifted[mask], y[mask]
 
-        x1_seg, y1_seg = get_segment(self.instances[0].df)
-        x2_seg, y2_seg = get_segment(self.instances[1].df)
+        x1_seg, y1_seg = get_segment(self.analyzers[0].df)
+        x2_seg, y2_seg = get_segment(self.analyzers[1].df)
 
         if len(x1_seg) < 2 or len(x2_seg) < 2:
             print("Not enough data in selection.")
