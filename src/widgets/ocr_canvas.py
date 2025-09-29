@@ -22,20 +22,28 @@ class OCRCanvas(QLabel):
         self.end = None
         self.roi = None
         self.roi_selected = False  # 标记是否已选择
+        self.can_select = False
+    
+    def enable_select(self):
+        self.can_select = True
+    
+    def disable_select(self):
+        self.can_select = False
 
     def mousePressEvent(self, event):
-        if self.roi_selected == False and event.button() == Qt.LeftButton:
+        if self.can_select and self.roi_selected == False and event.button() == Qt.LeftButton:
             self.start = event.pos()
             self.end = self.start
             self.update()
 
+
     def mouseMoveEvent(self, event):
-        if self.roi_selected == False and self.start:
+        if self.can_select and self.roi_selected == False and self.start:
             self.end = event.pos()
             self.update()
 
     def mouseReleaseEvent(self, event):
-        if self.roi_selected == False and event.button() == Qt.LeftButton and self.start:
+        if self.can_select and self.roi_selected == False and event.button() == Qt.LeftButton and self.start:
             self.end = event.pos()
             x1, y1 = min(self.start.x(), self.end.x()), min(self.start.y(), self.end.y())
             x2, y2 = max(self.start.x(), self.end.x()), max(self.start.y(), self.end.y())
@@ -73,7 +81,9 @@ class OCRCanvas(QLabel):
             return self.frame
         
         self.update()
-        return self.frame
+        x, y, w, h = self.roi
+        
+        return self.frame[y:y+h, x:x+w].copy()
 
     def paintEvent(self, event):
         super().paintEvent(event)

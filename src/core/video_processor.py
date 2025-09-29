@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import easyocr
 import csv
 import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:/Users/I_Rin\AppData/Local/Programs/Tesseract-OCR/tesseract.exe"
 import re
 import math
 
 video_path = r"u9x.mp4"
 instance_name = video_path.replace(".mp4", "")
-pytesseract.pytesseract.tesseract_cmd = r"C:/Users/I_Rin\AppData/Local/Programs/Tesseract-OCR/tesseract.exe"
 reader = easyocr.Reader(['ch_sim'], gpu=True)
 
 easy_err_number = [65, 105, 115, 125, 135, 150, 155, 165, 205, 250, 255]
@@ -32,7 +32,6 @@ def get_number(display_frame, on_err_cb = None):
 
     return number
 
-
 def get_number_float(display_frame, on_err_cb = None):
     custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.'
     text = pytesseract.image_to_string(display_frame, config=custom_config)
@@ -48,16 +47,44 @@ def get_number_float(display_frame, on_err_cb = None):
         
     return value
 
-class ProcessVideo(object):
-    """docstring for ProcessVideo."""
-    def __init__(self, arg):
-        super(ProcessVideo, self).__init__()
-        
+class TimeSpeedProcessor():
+    """docstring for TimeSpeed."""
+    def __init__(self, frame_rate):
+        self.index = 0
+        self.time_interval = 1.0 / frame_rate
+        self.time_speed = []
+        self.ez_ocr_able_to_process = True
+        self.last_speed = -1
     
-
-def handle_outstanding_number(cu):
-    if len(time_speed) > 0:
-        last_speed =  time_speed[-1][1]
-        if math.fabs(number - last_speed) > 50:
+    def process_frame(self, frame: cv2.Mat):
+        def func_err_cb1():
+            print("Int data not work data")
+            
+            self.ez_ocr_able_to_process = False
+        
+        def func_err_cb2():
+            print("Can't recognize the data")
+        
+        if self.ez_ocr_able_to_process == True:
+            number = get_number(frame, func_err_cb1)
+            
+        if self.ez_ocr_able_to_process == False:
+            number = get_number_float(frame, func_err_cb2)
+        
+        if self.last_speed > 0 and math.fabs(number - self.last_speed) > 50:
+            print(f"origin number: {number}")
             array = [65, 115, 155, 105, 205, 150, 250, 135, 165]
-            number = min(array, key=lambda v: abs(v - last_speed))
+            number = min(array, key=lambda v: abs(v - self.last_speed))
+    
+        self.last_speed = number
+        self.time_speed.append((self.index * self.time_interval, number))
+        self.index += 1
+        return number
+
+    def restart(self):
+        self.index = 0
+        self.time_speed.clear()
+        
+    def get_result(self):
+        return self.time_speed
+    
