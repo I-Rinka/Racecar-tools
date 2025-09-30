@@ -5,12 +5,37 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen, QColor
 from PyQt5.QtCore import Qt, QRect
 from core.video_wrapper import VideoWrapper
+import copy
 
 def cvimg_to_qt(img):
     """把OpenCV的BGR图像转成Qt的QImage"""
     h, w, ch = img.shape
     bytes_per_line = ch * w
     return QImage(img.data, w, h, bytes_per_line, QImage.Format_BGR888)
+
+class RoiVideo():
+    def __init__(self,video:VideoWrapper, frame_idx: int, roi:tuple):
+        self.video = video.copy()
+        self.roi = roi
+        self.frame_index = frame_idx
+        self.video.set_frame(self.frame_index)
+
+    def get_next_processed_frame(self):
+        self.frame_index = self.frame_index + 1
+        self.frame = self.video.get_next_frame()
+        if self.frame is None:
+            return None
+
+        x, y, w, h = self.roi
+        return self.frame[y:y+h, x:x+w].copy()
+    
+    def set_new_value(self, idx, roi):
+        self.frame_index = idx
+        self.video.set_frame(self.frame_index)
+        self.roi=roi
+
+    def get_cur_index(self):
+        return self.frame_index
 
 class OCRCanvas(QLabel):
     def __init__(self, video_path:str):
@@ -76,10 +101,23 @@ class OCRCanvas(QLabel):
         if not self.roi_selected:
             return None
         return self.frame
+    
+    def paly_video_at_index(self, idx):
+        self.frame_index = idx
+        self.frame = self.video.set_and_get_frame(idx)
+        self.qimage:QImage = cvimg_to_qt(self.frame)
+        self.setPixmap(QPixmap.fromImage(self.qimage))
+        self.update()
+    
+    def get_roi_video_copy(self):
+        return RoiVideo(self.video, self.frame_index, self.roi)
 
     def play_video(self) -> cv2.Mat:
         self.frame_index = self.frame_index + 1
         self.frame = self.video.get_next_frame()
+        if self.frame is None:
+            return None
+        
         self.qimage:QImage = cvimg_to_qt(self.frame)
         self.setPixmap(QPixmap.fromImage(self.qimage))
         

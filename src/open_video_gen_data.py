@@ -1,9 +1,48 @@
-from widgets.ocr_canvas import OCRCanvas
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog
-from PyQt5.QtCore import Qt, QTimer, QCoreApplication
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from core.video_processor import TimeSpeedProcessor
 import os
+import copy
+from widgets.ocr_canvas import OCRCanvas, RoiVideo
+
+class VideoAnalysisThread(QThread):
+    finished = pyqtSignal(object)
+    processed = pyqtSignal(object)
+
+    def __init__(self, roi:RoiVideo, processr:TimeSpeedProcessor):
+        super().__init__()
+        self.roi = roi
+        self.running = True
+        self.processor = processr
+
+    def run(self):
+        # 模拟耗时分析
+        while self.running:
+            frame = self.roi.get_next_processed_frame()
+            
+            if frame is None:
+                self.finished.emit({"result":self.processor.get_df_data()})
+                return
+
+            number = self.processor.process_frame(frame, self.roi.get_cur_index() - 1)
+            self.processed.emit({"frame": frame, "number": number, "index": self.roi.get_cur_index() - 1})
+    
+    def set_new_value(self, idx, roi):
+        self.roi.set_new_value(idx, roi)
+        
+    def stop(self):
+        self.running = False
+        
+    def get_result(self):
+        self.stop()
+        self.wait()
+        return self.processor.get_df_data()
+        
+    def start(self, priority=QThread.InheritPriority):
+        if not self.isRunning():  # 避免重复 start 崩溃
+            self.running = True
+            super().start(priority)
 
 class ROIWindow(QMainWindow):
     def __init__(self, video_path):
@@ -21,55 +60,79 @@ class ROIWindow(QMainWindow):
         self.name = name
         
         self.timer = QTimer()
-        self.timer.timeout.connect(self.process_video)
+        self.timer.timeout.connect(self.play_video)
         self.timer.start(int(1000.0 / self.ocr_canvas.video_frame_rate()))  # ~30fps
 
-        self.processor = TimeSpeedProcessor(self.ocr_canvas.video_frame_rate())
+        # self.processor = TimeSpeedProcessor(self.ocr_canvas.video_frame_rate())
         
-    def process_video(self):
-        if self.is_paused:
-            self.ocr_canvas.enable_select()
+        self.q_thread = VideoAnalysisThread(self.ocr_canvas.get_roi_video_copy(), TimeSpeedProcessor(self.ocr_canvas.video_frame_rate()))
+        self.q_thread.processed.connect(self.play_processed_frame)
+        
+    def play_processed_frame(self, result):
+        idx = result["index"]
+        self.ocr_canvas.paly_video_at_index(idx)
+    
+    def play_video(self):
+        self.ocr_canvas.play_video()
+        # roi selected:
+        if self.ocr_canvas.roi_selected == True:
+            self.timer.stop()
+            self.q_thread.set_new_value(self.ocr_canvas.frame_index, self.ocr_canvas.roi)            
+            self.q_thread.start()
+        
+    def timer_play_or_pause(self, to_pause = None):
+        if to_pause is None: # switch
+            if self.is_paused:
+                self.ocr_canvas.disable_select()
+                self.timer.start(int(1000.0 / self.ocr_canvas.video_frame_rate()))  # ~30fps
+            else:
+                self.ocr_canvas.enable_select()
+                # 切换后是已停止状态：通知处理线程暂停
+                if self.ocr_canvas.roi_selected:
+                    self.q_thread.stop()
+                else:
+                    self.timer.stop()
+            self.is_paused = not self.is_paused
             return
         
-        self.ocr_canvas.disable_select()
-        
-        if self.ocr_canvas.roi_selected:
-            self.timer.setInterval(0)
         else:
-            self.timer.setInterval(int(1000.0 / self.ocr_canvas.video_frame_rate()))
-            
-        if not self.ocr_canvas.video_is_end():
-            frame = self.ocr_canvas.play_video()
-            if self.ocr_canvas.roi_selected:
-                number = self.processor.process_frame(frame, self.ocr_canvas.frame_index - 1)
-                print(number) # get number
-            
-        else:
-            self.timer.stop()
+            if self.is_paused and not to_pause:
+                self.ocr_canvas.disable_select()
+                self.timer.start(int(1000.0 / self.ocr_canvas.video_frame_rate()))  # ~30fps
+            elif not self.is_paused and to_pause:
+                self.ocr_canvas.enable_select()
+                # 切换后是已停止状态：通知处理线程暂停
+                if self.ocr_canvas.roi_selected:
+                    self.q_thread.stop()
+                else:
+                    self.timer.stop()
+            self.is_paused = to_pause
+            # else not to do
             
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
-            self.processor.write_csv(self.name+"_database.csv")
-            self.timer.stop()
+            # self.processor.write_csv(self.name+"_database.csv")
+            self.q_thread.get_result()
+            self.q_thread.processor.write_csv(self.name+"_database.csv")
+            self.timer_play_or_pause(True)
             QMessageBox.information(self, "保存成功", f"文件已保存到:{os.path.join(os.getcwd(), self.name+"_database.csv")}")
-            QCoreApplication.instance().quit()
             
-        if event.key() == Qt.Key.Key_Left:
+        if event.key() == Qt.Key.Key_Left and not self.ocr_canvas.roi_selected:
             self.ocr_canvas.video_paly_back()
-            self.is_paused = True
+            self.timer_play_or_pause(True)
             
-        elif event.key() == Qt.Key.Key_Right:
+        elif event.key() == Qt.Key.Key_Right and not self.ocr_canvas.roi_selected:
             self.ocr_canvas.play_video()
             self.ocr_canvas.play_video()
-            self.is_paused = True
+            self.timer_play_or_pause(True)
         
         elif event.key() == Qt.Key.Key_Space:
-            self.is_paused = not self.is_paused
+            self.timer_play_or_pause()
             
         elif event.key() == Qt.Key.Key_Escape:
             self.ocr_canvas.roi_selected = False
-            self.processor.restart()
-            
+            self.q_thread.stop()
+            self.q_thread.processor.restart()
             self.ocr_canvas.update()
     
     def get_widget(self):
@@ -81,7 +144,7 @@ class ROIWindow(QMainWindow):
         return self.ocr_canvas.get_size_h_w()
     
     def get_result(self):
-        return self.processor.get_df_data()
+        return self.q_thread.get_result()
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)

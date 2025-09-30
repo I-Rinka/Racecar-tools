@@ -77,7 +77,6 @@ class TimeSpeedProcessor():
             number = get_number_float(frame, func_err_cb2)
         
         if self.last_speed > 0 and math.fabs(number - self.last_speed) > 50:
-            print(f"origin number: {number}")
             array = [65, 115, 155, 105, 205, 150, 250, 135, 165]
             number = min(array, key=lambda v: abs(v - self.last_speed))
     

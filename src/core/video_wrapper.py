@@ -5,7 +5,11 @@ from PyQt5.QtCore import QTimer, Qt
 
 class VideoWrapper():
     def __init__(self,video_path:str):
+        self._video_path = video_path
         self.cap = cv2.VideoCapture(video_path)
+        
+    def copy(self):
+        return VideoWrapper(self._video_path)
 
     def set_frame(self, frame_index:int):
         if self.cap.get(cv2.CAP_PROP_FRAME_COUNT) > frame_index:
@@ -19,6 +23,8 @@ class VideoWrapper():
         return None
     
     def get_next_frame(self):
+        if not self.cap.isOpened():
+            return None
         _, frame = self.cap.read()
         return frame
 
