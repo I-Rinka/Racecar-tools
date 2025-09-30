@@ -9,8 +9,6 @@ import re
 import math
 import pandas as pd
 
-video_path = r"u9x.mp4"
-instance_name = video_path.replace(".mp4", "")
 reader = easyocr.Reader(['ch_sim'], gpu=True)
 
 easy_err_number = [65, 105, 115, 125, 135, 150, 155, 165, 205, 250, 255]
@@ -72,6 +70,8 @@ class TimeSpeedProcessor():
         
         if self.ez_ocr_able_to_process == True:
             number = get_number(frame, func_err_cb1)
+            if number > 1000:
+                self.ez_ocr_able_to_process = False
             
         if self.ez_ocr_able_to_process == False:
             number = get_number_float(frame, func_err_cb2)
@@ -115,6 +115,7 @@ class TimeSpeedProcessor():
             
     def restart(self):
         self.index = 0
+        self.ez_ocr_able_to_process = True
         self.time_speed.clear()
         
     def get_result(self):

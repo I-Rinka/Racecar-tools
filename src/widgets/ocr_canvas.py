@@ -101,7 +101,6 @@ class OCRCanvas(QLabel):
 
             rect = QRect(x, y, w, h)
             painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
-            
             frame = self.frame[y:y+h, x:x+w].copy()
             painter.drawImage(rect, cvimg_to_qt(frame))
             

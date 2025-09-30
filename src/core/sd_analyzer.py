@@ -35,6 +35,7 @@ class SDAnalyzer():
 
         self.line, = self.ax.plot(self.df['distance'], self.df['speed'], label=name, picker=True)
         self.point = None
+        self.vert_line = None
 
         self.build_sd()
         self.current_index = 0
@@ -59,7 +60,13 @@ class SDAnalyzer():
                                     markeredgewidth=1)
         if distance == -1:
             self.point.set_data([self.df["distance"][self.current_index]], [self.df['speed'][self.current_index]])
-            return
+            if self.vert_line is None:
+                self.vert_line = self.ax.axvline(x=[self.df["distance"][self.current_index]], color="black", linewidth=0.5, alpha=0.8, linestyle='-')
+            self.vert_line.set_xdata([self.df["distance"][self.current_index]])
+        else:
+            if self.vert_line is not None:
+                self.vert_line.remove()
+                self.vert_line = None
 
         index = self.get_index(distance)
         if index:
