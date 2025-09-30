@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from plot_page import PlotTab
-from analyzer_page import VideoAnalysisTab,VideoAnalysisTab
+from drop_video_and_process_page import VideoDropAndProcessWidget
 
 # --------------------- 自定义可拖拽 TabBar ---------------------
 class DraggableTabBar(QTabBar):
@@ -56,17 +56,16 @@ class DraggableTabBar(QTabBar):
         #     return
         widget = tab_widget.widget(index)
         # 只允许 VideoAnalysisTab 并且已经完成
-        # if not isinstance(widget, VideoAnalysisTab):
-        #     return
+        if not isinstance(widget, VideoDropAndProcessWidget):
+            return
         # if not widget.result_data:
         #     return
 
         # 构建 mime payload（使用 pickle 打包）
         try:
             payload = {
-                'name': os.path.basename(widget.video_path),
                 'path': widget.video_path,
-                'data': widget.result_data
+                'data': widget.get_result()
             }
             pickled = pickle.dumps(payload)
             mime = QMimeData()
@@ -92,7 +91,7 @@ class DraggableTabWidget(QTabWidget):
 
     def _on_tab_close_requested(self, index):
         widget = self.widget(index)
-        if isinstance(widget, VideoAnalysisTab):
+        if isinstance(widget, VideoDropAndProcessWidget):
             try:
                 widget.worker.stop()
                 widget.worker.wait(2000)
@@ -111,7 +110,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.main_tabs)
 
         # 默认首页：视频分析容器
-        self.analysis_container = VideoAnalysisTab(self.main_tabs)
+        self.analysis_container = VideoDropAndProcessWidget()
         self.main_tabs.addTab(self.analysis_container, "视频解析")
 
         # 菜单
@@ -134,7 +133,7 @@ class MainWindow(QMainWindow):
         self.main_tabs.setCurrentIndex(idx)
     
     def add_analyze_tab(self):
-        plot = VideoAnalysisTab(self.main_tabs)
+        plot = VideoDropAndProcessWidget()
         idx = self.main_tabs.addTab(plot, "视频解析")
         self.main_tabs.setCurrentIndex(idx)
 

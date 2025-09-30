@@ -25,5 +25,8 @@ class VideoWrapper():
     def get_frame_rate(self):
         return self.cap.get(cv2.CAP_PROP_FPS)
     
+    def get_frame_count(self):
+        return self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    
     def is_opened(self):
         return self.cap.isOpened()

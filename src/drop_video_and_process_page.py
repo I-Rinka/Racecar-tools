@@ -37,6 +37,7 @@ class VideoDropAndProcessWidget(QWidget):
         # 连接 drop 事件
         self.drop_label.dragEnterEvent = self._drag_enter
         self.drop_label.dropEvent = self._drop_event
+        self.controller = None
         
         self.resize(1280, 720)
         
@@ -56,16 +57,24 @@ class VideoDropAndProcessWidget(QWidget):
                 self.video_path = path
 
     def add_task(self, video_path):
+        
         self.qvbox.removeWidget(self.drop_label)
         self.drop_label.deleteLater()
         
+        # NOTE this works. TODO: connect progress bar with video frame
+        # self.qvbox.addWidget(VideoAnalysisBar(video_path))
+        
         controller = ROIWindow(video_path).get_widget()
+        self.controller = controller
         self.qvbox.addWidget(controller)
         
         if self.parentWidget():
             self.parentWidget().adjustSize()
-        
-        
+    
+    def get_result(self):
+        if self.controller is None:
+            return None
+        return self.controller.get_result()
         # tab = VideoAnalysisBar(video_path)
         # self.qvbox.removeWidget(self.drop_label)
         # self.drop_label.deleteLater()

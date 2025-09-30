@@ -79,6 +79,9 @@ class ROIWindow(QMainWindow):
     
     def get_size_h_w(self):
         return self.ocr_canvas.get_size_h_w()
+    
+    def get_result(self):
+        return self.processor.get_df_data()
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)

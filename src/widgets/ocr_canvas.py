@@ -59,6 +59,12 @@ class OCRCanvas(QLabel):
     def video_frame_rate(self):
         return self.video.get_frame_rate()
     
+    def video_frame_count(self):
+        return self.video.get_frame_count()
+    
+    def video_current_frame_index(self):
+        return self.frame_index
+    
     def video_paly_back(self):
         if self.frame_index > 0:
             self.frame_index = self.frame_index - 2

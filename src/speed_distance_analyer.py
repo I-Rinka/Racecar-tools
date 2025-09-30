@@ -42,6 +42,7 @@ class PltMainWindow(QMainWindow):
         
         self.bottom_splitter = QSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.bottom_splitter)
+        self.bottom_splitter.setMinimumHeight(720)
      
         self.playing = False
     def keyReleaseEvent(self, event):
@@ -97,10 +98,26 @@ class PltMainWindow(QMainWindow):
             self.canvas.draw()
         self.videos[min_idx].register_frame_update_func(slowest_update_to_draw)
 
+    def add_instance_by_data_frame(self, video_path, df):
+        video_canvas = VideoCanvas(video_path)
+        self.videos.append(video_canvas)
+        sd_instance = self.canvas.add_instance_by_df(video_path, df)
+        initial_idx = sd_instance.get_initial_frame()
+        
+        def update_video(vis:SDAnalyzer, i:int):
+            self.videos[i].update_frame(vis.get_current_frame_index())
+            
+        self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
+        video_canvas.set_frame_index(initial_idx)
+        
+        self.bottom_splitter.addWidget(video_canvas)
+        
+        self.regist_plt_point_animation()
+    
     def add_instance(self, path, video_path):
         video_canvas = VideoCanvas(video_path)
         self.videos.append(video_canvas)
-        sd_instance = self.canvas.add_instance(path)
+        sd_instance = self.canvas.add_instance_by_file(path)
         initial_idx = sd_instance.get_initial_frame()
         
         def update_video(vis:SDAnalyzer, i:int):
@@ -111,6 +128,11 @@ class PltMainWindow(QMainWindow):
         self.bottom_splitter.addWidget(video_canvas)
         
         self.regist_plt_point_animation()
+        
+    def get_widget(self):
+        self.setWindowFlags(self.windowFlags() & ~Qt.Window)
+        self.setFocusPolicy(Qt.StrongFocus)
+        return self
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -33,19 +33,21 @@ class PlotTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
+        self.qvbox = layout
+        self.plt = PltMainWindow().get_widget()
+        layout.addWidget(self.plt)
 
-        splitter = QSplitter(Qt.Vertical)
-        layout.addWidget(splitter)
+        # splitter = QSplitter(Qt.Vertical)
+        # layout.addWidget(splitter)
+        # # 左侧列表（显示导入的数据项）
+        # self.list_widget = QListWidget()
+        # splitter.addWidget(self.list_widget)
+        # self.list_widget.setMaximumHeight(50)
 
-        # 左侧列表（显示导入的数据项）
-        self.list_widget = QListWidget()
-        splitter.addWidget(self.list_widget)
-        self.list_widget.setMaximumHeight(50)
-
-        # 右侧 matplotlib 画布
-        self.fig, self.ax = plt.subplots()
-        self.canvas = FigureCanvas(self.fig)
-        splitter.addWidget(self.canvas)
+        # # 右侧 matplotlib 画布
+        # self.fig, self.ax = plt.subplots()
+        # self.canvas = FigureCanvas(self.fig)
+        # splitter.addWidget(self.canvas)
 
         self._lines = {}  # name -> matplotlib Line2D
         self.setAcceptDrops(True)
@@ -61,33 +63,36 @@ class PlotTab(QWidget):
             ba = event.mimeData().data('application/x-video-analysis')
             pickled = bytes(ba)             # QByteArray -> bytes
             payload = pickle.loads(pickled)
-            name = payload.get('name') or os.path.basename(payload.get('path', 'data'))
+            # name = payload.get('name') or os.path.basename(payload.get('path', 'data'))
+            video_path = payload.get('path')
             data = payload.get('data')
+            self.plt.add_instance_by_data_frame(video_path, data)
+            
         except Exception as e:
             print("Drop parse failed:", e)
             return
 
-        # 防止重复导入同名数据
-        base_name = name
-        count = 1
-        while base_name in self._lines:
-            base_name = f"{name}_{count}"
-            count += 1
-        name = base_name
+        # # 防止重复导入同名数据
+        # base_name = name
+        # count = 1
+        # while base_name in self._lines:
+        #     base_name = f"{name}_{count}"
+        #     count += 1
+        # name = base_name
 
-        # 在列表中添加一项和删除按钮
-        item = QListWidgetItem()
-        widget_row = QWidget()
-        row_layout = QHBoxLayout(widget_row)
-        label = QLabel(name)
-        btn = QPushButton("删除")
-        btn.setFixedWidth(60)
-        row_layout.addWidget(label)
-        row_layout.addWidget(btn)
-        row_layout.setContentsMargins(2, 2, 2, 2)
-        item.setSizeHint(widget_row.sizeHint())
-        self.list_widget.addItem(item)
-        self.list_widget.setItemWidget(item, widget_row)
+        # # 在列表中添加一项和删除按钮
+        # item = QListWidgetItem()
+        # widget_row = QWidget()
+        # row_layout = QHBoxLayout(widget_row)
+        # label = QLabel(name)
+        # btn = QPushButton("删除")
+        # btn.setFixedWidth(60)
+        # row_layout.addWidget(label)
+        # row_layout.addWidget(btn)
+        # row_layout.setContentsMargins(2, 2, 2, 2)
+        # item.setSizeHint(widget_row.sizeHint())
+        # self.list_widget.addItem(item)
+        # self.list_widget.setItemWidget(item, widget_row)
 
         # 绘图
         # try:
@@ -101,29 +106,29 @@ class PlotTab(QWidget):
         # self._lines[name] = line
         # self.ax.legend()
         # self.canvas.draw_idle()
-        df = dfs[it]
-        line, = self.ax.plot(df["distance"], df["speed"], label=name)
-        self._lines[name] = line
-        self.ax.legend()
-        self.canvas.draw_idle()
+        # df = dfs[it]
+        # line, = self.ax.plot(df["distance"], df["speed"], label=name)
+        # self._lines[name] = line
+        # self.ax.legend()
+        # self.canvas.draw_idle()
         
-        it += 1
-        if it == 2:
-            window = PltMainWindow()
-            window.show()
+        # it += 1
+        # if it == 2:
+        #     window = PltMainWindow()
+        #     window.show()
 
-        def remove_item():
-            # 从画布删除
-            try:
-                ln = self._lines.pop(name, None)
-                if ln:
-                    ln.remove()
-                # 从列表删除
-                row_index = self.list_widget.row(item)
-                self.list_widget.takeItem(row_index)
-                self.ax.legend()
-                self.canvas.draw_idle()
-            except Exception as e:
-                print("Remove item error:", e)
+        # def remove_item():
+        #     # 从画布删除
+        #     try:
+        #         ln = self._lines.pop(name, None)
+        #         if ln:
+        #             ln.remove()
+        #         # 从列表删除
+        #         row_index = self.list_widget.row(item)
+        #         self.list_widget.takeItem(row_index)
+        #         self.ax.legend()
+        #         self.canvas.draw_idle()
+        #     except Exception as e:
+        #         print("Remove item error:", e)
 
-        btn.clicked.connect(remove_item)
+        # btn.clicked.connect(remove_item)

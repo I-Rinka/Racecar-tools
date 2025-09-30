@@ -24,12 +24,17 @@ def local_slope(x_arr, y_arr, idx, window=5):
     return slope
 
 class SDAnalyzer():
-    def __init__(self, axes:Axes, speed_distance_path:str, name: str=None):
+    def __init__(self, axes:Axes, speed_distance_path=None, name: str=None, data_frame: pd.DataFrame = None):
+        if data_frame is not None:
+            self.df = data_frame
+        else:
+            self.df = pd.read_csv(speed_distance_path)
+        
         if name is None:
             name = extract_name_without_extension(speed_distance_path)
+
         self.name = name
         self.ax = axes
-        self.df = pd.read_csv(speed_distance_path)
 
         self.initial_frame = self.df['frame'][0]
 

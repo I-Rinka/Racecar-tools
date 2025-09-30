@@ -45,9 +45,16 @@ class VisCanvas(FigureCanvas):
     """func(instance,i)"""
     def register_instance_on_hover(self, func, i):
         self._analyzer_update_cb[i] = func
-
-    def add_instance(self, file) -> SDAnalyzer:
+        
+    def add_instance_by_df(self, name, data_frame)-> SDAnalyzer:
+        analyzer = SDAnalyzer(self.ax, name=name, data_frame=data_frame)
+        return self.__add_instance(analyzer)
+    
+    def add_instance_by_file(self, file) -> SDAnalyzer:
         analyzer = SDAnalyzer(self.ax, speed_distance_path=file)
+        return self.__add_instance(analyzer)
+    
+    def __add_instance(self, analyzer) -> SDAnalyzer:
         self.analyzers.append(analyzer)
         self._analyzer_update_cb.append(None)
         max_distance = max(i.df['distance'].max() for i in self.analyzers)
