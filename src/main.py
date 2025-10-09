@@ -44,22 +44,14 @@ class DraggableTabBar(QTabBar):
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
-        #if self._press_pos is None or self._press_index < 0:
-        #    return
-        # 达到拖动阈值
-        # if (event.pos() - self._press_pos).manhattanLength() < QApplication.startDragDistance():
-        #     return
 
         tab_widget = self.parent()  # QTabWidget
         index = self.pressed_index
-        # if index < 0 or index >= tab_widget.count():
-        #     return
+
         widget = tab_widget.widget(index)
         # 只允许 VideoAnalysisTab 并且已经完成
         if not isinstance(widget, VideoDropAndProcessWidget):
             return
-        # if not widget.result_data:
-        #     return
 
         # 构建 mime payload（使用 pickle 打包）
         try:
@@ -67,6 +59,7 @@ class DraggableTabBar(QTabBar):
                 'path': widget.video_path,
                 'data': widget.get_result()
             }
+
             pickled = pickle.dumps(payload)
             mime = QMimeData()
             mime.setData('application/x-video-analysis', QByteArray(pickled))

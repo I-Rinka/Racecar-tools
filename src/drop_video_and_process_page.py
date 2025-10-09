@@ -75,23 +75,6 @@ class VideoDropAndProcessWidget(QWidget):
         if self.controller is None:
             return None
         return self.controller.get_result()
-        # tab = VideoAnalysisBar(video_path)
-        # self.qvbox.removeWidget(self.drop_label)
-        # self.drop_label.deleteLater()
-        # self.qvbox.addWidget(tab)
-
-        # # 连接完成信号，更新 tab 标题（按该 tab 对象查找 index，安全）
-        # def on_finished(tab_widget):
-        #     print(tab_widget.video_path)
-        #     # print(self.parent_tabs) DraggableTabWidget
-        #     # try:
-        #     #     tab_index = self.task_tabs.indexOf(tab_widget)
-        #     #     if tab_index >= 0:
-        #     #         self.task_tabs.setTabText(tab_index, f"完成: {os.path.basename(tab_widget.video_path)}")
-        #     #         self.result_data = tab_widget.result_data
-        #     # except Exception as e:
-        #     #     print("on_finished error:", e)
-        # tab.finished_signal.connect(on_finished)
 
 
 if __name__ == "__main__":

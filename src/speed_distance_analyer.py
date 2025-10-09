@@ -79,6 +79,9 @@ class PltMainWindow(QMainWindow):
         super().resizeEvent(event)
     
     def regist_plt_point_animation(self):
+        if len(self.videos) != len(self.canvas.analyzers):
+            return
+
         fps = [v.video.get_frame_rate() for v in self.videos]
         min_idx = int(np.argmin(fps))
         for i,instance in enumerate(self.canvas.analyzers):
@@ -145,20 +148,25 @@ class PltMainWindow(QMainWindow):
         
         self.refresh_video_layout()
         self.regist_plt_point_animation()
+        
+        for video in self.videos:
+            video.update_frame(video.frame_index)
+        self.canvas.update_plot()
     
     def add_instance(self, path, video_path):
         sd_instance = self.canvas.add_instance_by_file(path)
         initial_idx = sd_instance.get_initial_frame()
         self.add_video(video_path, initial_idx)
-        
-        for video in self.videos:
-            video.update_frame(video.frame_index)
-        self.canvas.update_plot()
 
     def add_instance_by_data_frame(self, video_path, df):
         sd_instance = self.canvas.add_instance_by_df(video_path, df)
         initial_idx = sd_instance.get_initial_frame()
         self.add_video(video_path, initial_idx)
+    
+    def add_data_frame(self, path):
+        res = self.canvas.add_instance_by_file(path)
+        self.canvas.update_plot()
+        return res
         
     def get_widget(self):
         self.setWindowFlags(self.windowFlags() & ~Qt.Window)

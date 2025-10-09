@@ -122,7 +122,7 @@ class TimeSpeedProcessor():
             "speed": [self.time_speed[i][1] for i in range(len(self.time_speed))],
             "distance": distance,
             "time": [self.time_speed[i][0] for i in range(len(self.time_speed))],
-            "accel": get_accel((self.time_speed[i][1] for i in range(len(self.time_speed))), distance)
+            "accel": get_accel([self.time_speed[i][1] for i in range(len(self.time_speed))], distance)
         }
         
         self.df = pd.DataFrame(data)
