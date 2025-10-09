@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt
 from core.video_wrapper import VideoWrapper
+
 class VideoCanvas(QLabel):
     def __init__(self, video_path:str):
         super().__init__()

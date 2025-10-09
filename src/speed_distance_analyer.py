@@ -31,20 +31,18 @@ class PltMainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
-        # ---- Splitter (上下分屏，1:1) ----
-        self.splitter = QSplitter(Qt.Vertical)
-        layout.addWidget(self.splitter)
+        self.playing = False
         
         self.canvas = VisCanvas()
         self.canvas.setMinimumHeight(200)
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.splitter.addWidget(self.canvas)
+        layout.addWidget(self.canvas, stretch=1)
+
+        # ---- 下方视频区域 (自动2x2布局) ----
+        self.video_container = QWidget()
+        self.video_layout = QGridLayout(self.video_container)
+        layout.addWidget(self.video_container, stretch=2)
         
-        self.bottom_splitter = QSplitter(Qt.Horizontal)
-        self.splitter.addWidget(self.bottom_splitter)
-        self.bottom_splitter.setMinimumHeight(720)
-     
-        self.playing = False
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key.Key_Control:
             self.canvas.press_ctrl = False
@@ -94,40 +92,73 @@ class PltMainWindow(QMainWindow):
         def slowest_update_to_draw(s):
             vis = self.canvas.analyzers[min_idx]
             vis.inc_current_index()
+
             vis.draw_point()
-            self.canvas.draw()
+            self.canvas.update_plot()
+            
         self.videos[min_idx].register_frame_update_func(slowest_update_to_draw)
 
-    def add_instance_by_data_frame(self, video_path, df):
+    def refresh_video_layout(self):
+        """根据当前视频数量自动重新布局"""
+        # 清空旧布局
+        for i in reversed(range(self.video_layout.count())):
+            widget = self.video_layout.itemAt(i).widget()
+            if widget:
+                self.video_layout.removeWidget(widget)
+                widget.setParent(None)
+
+        count = len(self.videos)
+        if count == 0:
+            return
+
+        if count == 1:
+            self.video_layout.addWidget(self.videos[0], 0, 0)
+        elif count == 2:
+            self.video_layout.addWidget(self.videos[0], 0, 0)
+            self.video_layout.addWidget(self.videos[1], 0, 1)
+        elif count == 3:
+            self.video_layout.addWidget(self.videos[0], 0, 0)
+            self.video_layout.addWidget(self.videos[1], 0, 1)
+            self.video_layout.addWidget(self.videos[2], 1, 0)
+        else:
+            # 4个或更多时，取前4个 2x2
+            for idx, label in enumerate(self.videos[:4]):
+                row, col = divmod(idx, 2)
+                self.video_layout.addWidget(label, row, col)
+
+        # 确保布局均分
+        if count > 2:
+            for row in range(2):
+                self.video_layout.setRowStretch(row, 1)
+            
+        for col in range(2):
+            self.video_layout.setColumnStretch(col, 1)
+
+    def add_video(self, video_path, initial_idx):
         video_canvas = VideoCanvas(video_path)
         self.videos.append(video_canvas)
-        sd_instance = self.canvas.add_instance_by_df(video_path, df)
-        initial_idx = sd_instance.get_initial_frame()
-        
         def update_video(vis:SDAnalyzer, i:int):
             self.videos[i].update_frame(vis.get_current_frame_index())
             
         self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
         video_canvas.set_frame_index(initial_idx)
         
-        self.bottom_splitter.addWidget(video_canvas)
-        
+        self.refresh_video_layout()
         self.regist_plt_point_animation()
     
     def add_instance(self, path, video_path):
-        video_canvas = VideoCanvas(video_path)
-        self.videos.append(video_canvas)
         sd_instance = self.canvas.add_instance_by_file(path)
         initial_idx = sd_instance.get_initial_frame()
+        self.add_video(video_path, initial_idx)
         
-        def update_video(vis:SDAnalyzer, i:int):
-            self.videos[i].update_frame(vis.get_current_frame_index())
-            
-        self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
-        video_canvas.set_frame_index(initial_idx)
-        self.bottom_splitter.addWidget(video_canvas)
-        
-        self.regist_plt_point_animation()
+        for video in self.videos:
+            video.update_frame(video.frame_index)
+        self.canvas.update_plot()
+
+    def add_instance_by_data_frame(self, video_path, df):
+        sd_instance = self.canvas.add_instance_by_df(video_path, df)
+        initial_idx = sd_instance.get_initial_frame()
+        self.add_video(video_path, initial_idx)
         
     def get_widget(self):
         self.setWindowFlags(self.windowFlags() & ~Qt.Window)
@@ -137,7 +168,7 @@ class PltMainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = PltMainWindow()
+    window.show()
     window.add_instance(file1, video_path1)
     window.add_instance(file2, video_path2)
-    window.show()
     sys.exit(app.exec_())

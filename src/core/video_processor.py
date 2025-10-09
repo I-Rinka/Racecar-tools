@@ -46,6 +46,27 @@ def get_number_float(display_frame, on_err_cb = None):
         
     return value
 
+def local_slope(x_arr, y_arr, idx, window=5):
+    n = len(x_arr)
+    i0 = max(0, idx - window)
+    i1 = min(n - 1, idx + window)
+    xs = x_arr[i0:i1+1]
+    ys = y_arr[i0:i1+1]
+    if len(xs) < 2:
+        return 0.0
+    A = np.vstack([xs, np.ones_like(xs)]).T
+    slope, _ = np.linalg.lstsq(A, ys, rcond=None)[0]
+    return slope
+
+def get_accel(speeds:list, distance:list, window = 5):
+    res = []
+    for i in range(len(speeds)):
+        dv_dx = local_slope(distance, speeds, i, window=window)
+        v0 = speeds[i]
+        a = v0 * dv_dx * 25 / 324
+        res.append(a)
+    return res
+    
 class TimeSpeedProcessor():
     """docstring for TimeSpeed."""
     def __init__(self, frame_rate):
@@ -100,7 +121,8 @@ class TimeSpeedProcessor():
             "frame": [self.time_speed[i][2] for i in range(len(self.time_speed))],
             "speed": [self.time_speed[i][1] for i in range(len(self.time_speed))],
             "distance": distance,
-            "time": [self.time_speed[i][0] for i in range(len(self.time_speed))]
+            "time": [self.time_speed[i][0] for i in range(len(self.time_speed))],
+            "accel": get_accel((self.time_speed[i][1] for i in range(len(self.time_speed))), distance)
         }
         
         self.df = pd.DataFrame(data)

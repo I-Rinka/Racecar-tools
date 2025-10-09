@@ -40,7 +40,6 @@ class SDAnalyzer():
 
         self.line, = self.ax.plot(self.df['distance'], self.df['speed'], label=name, picker=True)
         self.point = None
-        self.vert_line = None
 
         self.build_sd()
         self.current_index = 0
@@ -57,6 +56,9 @@ class SDAnalyzer():
         self.line.set_data(self.df['distance'], self.df['speed'])
         self.build_sd()
         
+    def get_current_distance(self):
+        return self.df["distance"][self.current_index]
+        
     def draw_point(self, distance=-1):
         if self.point is None:
             self.point, = self.ax.plot([], [], 'o', markersize=6, alpha=0.6,
@@ -65,13 +67,6 @@ class SDAnalyzer():
                                     markeredgewidth=1)
         if distance == -1:
             self.point.set_data([self.df["distance"][self.current_index]], [self.df['speed'][self.current_index]])
-            if self.vert_line is None:
-                self.vert_line = self.ax.axvline(x=[self.df["distance"][self.current_index]], color="black", linewidth=0.5, alpha=0.8, linestyle='-')
-            self.vert_line.set_xdata([self.df["distance"][self.current_index]])
-        else:
-            if self.vert_line is not None:
-                self.vert_line.remove()
-                self.vert_line = None
 
         index = self.get_index(distance)
         if index:
@@ -101,6 +96,9 @@ class SDAnalyzer():
         self.current_index = self.current_index + 1
 
     def get_current_accel(self, window = 5):
+        if self.df.get('accel') is not None:
+            return self.df['accel'][self.current_index]
+        
         speeds = self.df["speed"].values
         dv_dx = local_slope(self.df["distance"].values, speeds, self.current_index, window=window)
         v0 = speeds[self.current_index]
@@ -111,8 +109,8 @@ class SDAnalyzer():
 
     def get_accel(self, distance:float):
         index = self.get_index(distance)
-        if index and self.df.get('acceleration') is not None:
-            return self.df['acceleration'][index]
+        if index and self.df.get('accel') is not None:
+            return self.df['accel'][index]
         return 0
 
     def get_index(self, distance:float):
