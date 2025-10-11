@@ -1,11 +1,43 @@
 import sys
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QSlider
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen, QColor
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from core.video_wrapper import VideoWrapper
 import copy
+
+class VideoSlider(QSlider):
+    frameChanged = pyqtSignal(int)  # 拖动时发出的信号（用于跳帧）
+
+    def __init__(self, start = 0, total_frames=0):
+        super().__init__(Qt.Horizontal)
+        self.setRange(start, max(start, total_frames - 1))
+        self._dragging = False
+        self._last_value = 0
+
+        self.sliderPressed.connect(self._on_press)
+        self.sliderReleased.connect(self._on_release)
+        self.valueChanged.connect(self._on_value_change)
+
+    def _on_press(self):
+        self._dragging = True
+
+    def _on_release(self):
+        self._dragging = False
+        self.frameChanged.emit(self.value())
+
+    def _on_value_change(self, value):
+        self._last_value = value
+        self.frameChanged.emit(value)
+
+    def set_frame(self, frame_index):
+        """由VideoPlayer调用以更新滑块位置"""
+        if not self._dragging:
+            self.blockSignals(True)
+            self.setValue(frame_index)
+            self.blockSignals(False)
+
 
 def cvimg_to_qt(img):
     """把OpenCV的BGR图像转成Qt的QImage"""
@@ -85,7 +117,7 @@ class OCRCanvas(QLabel):
         return self.video.get_frame_rate()
     
     def video_frame_count(self):
-        return self.video.get_frame_count()
+        return int(self.video.get_frame_count())
     
     def video_current_frame_index(self):
         return self.frame_index

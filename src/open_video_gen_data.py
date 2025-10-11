@@ -1,10 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from core.video_processor import TimeSpeedProcessor
 import os
 import copy
-from widgets.ocr_canvas import OCRCanvas, RoiVideo
+from widgets.ocr_canvas import OCRCanvas, RoiVideo, VideoSlider
 
 class VideoAnalysisThread(QThread):
     finished = pyqtSignal(object)
@@ -49,7 +49,18 @@ class ROIWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("空格暂停，框选速度区域，Ctrl+S保存并退出")
         self.ocr_canvas = OCRCanvas(video_path)
-        self.setCentralWidget(self.ocr_canvas)
+        # self.setCentralWidget(self.ocr_canvas)
+        
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+        
+        self.slider = VideoSlider(0, self.ocr_canvas.video_frame_count())
+        self.slider.frameChanged.connect(self.ocr_canvas.paly_video_at_index)
+        
+        layout.addWidget(self.ocr_canvas)
+        layout.addWidget(self.slider)
+        
         h,w = self.ocr_canvas.get_size_h_w()
         self.resize(w, h)
         
@@ -70,14 +81,17 @@ class ROIWindow(QMainWindow):
         
     def play_processed_frame(self, result):
         idx = result["index"]
+        self.slider.set_frame(idx)
         self.ocr_canvas.paly_video_at_index(idx)
     
     def play_video(self):
         self.ocr_canvas.play_video()
+        self.slider.set_frame(self.ocr_canvas.video_current_frame_index())
+        
         # roi selected:
         if self.ocr_canvas.roi_selected == True:
             self.timer.stop()
-            self.q_thread.set_new_value(self.ocr_canvas.frame_index, self.ocr_canvas.roi)            
+            self.q_thread.set_new_value(self.ocr_canvas.frame_index, self.ocr_canvas.roi)
             self.q_thread.start()
         
     def timer_play_or_pause(self, to_pause = None):
@@ -119,11 +133,13 @@ class ROIWindow(QMainWindow):
             
         if event.key() == Qt.Key.Key_Left and not self.ocr_canvas.roi_selected:
             self.ocr_canvas.video_paly_back()
+            self.slider.set_frame(self.ocr_canvas.video_current_frame_index())
             self.timer_play_or_pause(True)
             
         elif event.key() == Qt.Key.Key_Right and not self.ocr_canvas.roi_selected:
             self.ocr_canvas.play_video()
             self.ocr_canvas.play_video()
+            self.slider.set_frame(self.ocr_canvas.video_current_frame_index())
             self.timer_play_or_pause(True)
         
         elif event.key() == Qt.Key.Key_Space:
@@ -158,5 +174,7 @@ if __name__ == "__main__":
 
     win = ROIWindow(file_path)
     win.show()
+    win.setFixedSize(win.size())
+
     
     sys.exit(app.exec_())

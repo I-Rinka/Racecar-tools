@@ -39,9 +39,6 @@ class VideoDropAndProcessWidget(QWidget):
         self.drop_label.dropEvent = self._drop_event
         self.controller = None
         
-        self.resize(1280, 720)
-        
-        
         # 当任务完成时，更新 tab 名（通过信号）
         # 由于 tabs 是动态增加的，连接在 add_task 时完成
 
@@ -60,9 +57,6 @@ class VideoDropAndProcessWidget(QWidget):
         
         self.qvbox.removeWidget(self.drop_label)
         self.drop_label.deleteLater()
-        
-        # NOTE this works. TODO: connect progress bar with video frame
-        # self.qvbox.addWidget(VideoAnalysisBar(video_path))
         
         controller = ROIWindow(video_path).get_widget()
         self.controller = controller
