@@ -9,11 +9,14 @@ import re
 import math
 import pandas as pd
 
-reader = easyocr.Reader(['ch_sim'], gpu=True)
+reader = None
 
 easy_err_number = [65, 105, 115, 125, 135, 150, 155, 165, 205, 250, 255]
 
 def get_number(display_frame, on_err_cb = None):
+    if reader == None:
+        reader = easyocr.Reader(['ch_sim'], gpu=True)
+    
     result = reader.readtext(display_frame, allowlist = '0123456789')
     if len(result) < 1:
         if on_err_cb is not None:
@@ -66,7 +69,22 @@ def get_accel(speeds:list, distance:list, window = 5):
         a = v0 * dv_dx * 25 / 324
         res.append(a)
     return res
-    
+
+def regen_df_by_time_speed(df: pd.DataFrame):
+    df = df.dropna(how='any')
+    distance = [0]
+    for i in range(1, len(df)):
+        t0, v0 = df["time"].iloc[i - 1], df["speed"].iloc[i - 1]
+        t1, v1 = df["time"].iloc[i], df["speed"].iloc[i]
+        v0_mps = v0 / 3.6
+        v1_mps = v1 / 3.6
+        delta_t = t1 - t0
+        s = distance[-1] + ((v0_mps + v1_mps) / 2) * delta_t
+        distance.append(s)
+    df["distance"] = distance
+    df["accel"] = get_accel(df["speed"].values, df["distance"].values)
+    return df
+
 class TimeSpeedProcessor():
     """docstring for TimeSpeed."""
     def __init__(self, frame_rate):

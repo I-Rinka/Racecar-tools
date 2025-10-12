@@ -71,6 +71,7 @@ class ROIWindow(QMainWindow):
         name,_ = os.path.splitext(video_base)
         self.name = name
         self.save_path = os.path.join(video_base, self.name+"_database.csv")
+        print(self.save_path)
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.play_video)
@@ -131,7 +132,6 @@ class ROIWindow(QMainWindow):
             
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
-            # self.processor.write_csv(self.name+"_database.csv")
             self.q_thread.get_result()
             self.q_thread.processor.write_csv(self.save_path)
             self.timer_play_or_pause(True)

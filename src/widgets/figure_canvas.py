@@ -4,6 +4,11 @@ from core.sd_analyzer import SDAnalyzer
 import mplcursors
 from typing import List
 from matplotlib.widgets import RectangleSelector
+from widgets.data_editor import DataEditor
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout
+
+from core.video_processor import regen_df_by_time_speed
 import numpy as np
 
 class VisCanvas(FigureCanvas):
@@ -123,9 +128,14 @@ class VisCanvas(FigureCanvas):
         self.ax.set_xlim(xdata - relx * new_width, xdata + (1 - relx) * new_width)
         self.ax.set_ylim(ydata - rely * new_height, ydata + (1 - rely) * new_height)
         self.draw_idle()
+    
+    def exit_editor(self, df):
+        self.analyzers[0].df = regen_df_by_time_speed(df)
+        self.analyzers[0].adjust_distance(0)
+        self.draw_idle()
         
     def on_select(self, eclick, erelease):
-        if not len(self.analyzers) == 2:
+        if len(self.analyzers) > 2:
             return
         
         x1 = min(eclick.xdata, erelease.xdata)
@@ -138,6 +148,22 @@ class VisCanvas(FigureCanvas):
                 t.remove()
                 self.delta_texts.remove(t)
 
+        if len(self.analyzers) == 1:
+            df = self.analyzers[0].df
+            x_shifted = df['distance'].values
+            mask = (x_shifted >= x1) & (x_shifted <= x2)
+            selected_idx = df.index[mask].tolist()
+        
+            self.editor = DataEditor(
+                df,
+                x_name="distance",
+                y_name="speed",
+                index_list=selected_idx,
+                save_callback=self.exit_editor
+            )
+            self.editor.show()
+            return
+        
         def get_segment(df):
             x_shifted = df['distance'].values
             y = df['speed'].values

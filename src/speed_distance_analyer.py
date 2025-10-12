@@ -11,6 +11,7 @@ from widgets.figure_canvas import VisCanvas
 from widgets.video_canvas import VideoCanvas
 from core.sd_analyzer import SDAnalyzer
 from typing import List
+import os
 
 file1 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_u9x.mp4.csv'
 file2 = r'C:/Users/I_Rin/Desktop/Racecar-tools/distance_speed_su7u.mp4.csv'
@@ -49,6 +50,14 @@ class PltMainWindow(QMainWindow):
         return super().keyReleaseEvent(event)
     
     def keyPressEvent(self, event):
+        if len(self.canvas.analyzers) == 1:
+            if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
+                name = self.canvas.analyzers[0].name
+                file_path, _ = QFileDialog.getSaveFileName(self, "保存数据文件", os.path.expanduser(f"~/{name}.csv"), "CSV 文件 (*.csv)")
+                if file_path:
+                    df = self.canvas.analyzers[0].df
+                    df.to_csv(file_path, index=False, encoding="utf-8-sig")
+                
         step = 10
         idx = self.canvas.selected_index
         if idx >= 0:

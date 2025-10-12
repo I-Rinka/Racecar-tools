@@ -10,7 +10,7 @@ from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QVBoxLayout,
     QTabWidget, QProgressBar, QHBoxLayout, QPushButton, QSplitter,
-    QListWidget, QListWidgetItem, QMessageBox, QTabBar
+    QListWidget, QListWidgetItem, QMessageBox, QFileDialog
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
