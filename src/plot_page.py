@@ -21,11 +21,7 @@ def get_video_path(csv_path):
     dir_path = os.path.dirname(csv_path)
     csv_name = os.path.basename(csv_path)
 
-    # 提取 <filename>
-    if not csv_name.startswith("speed_distance_"):
-        raise ValueError(f"CSV 文件命名不符合要求：{csv_name}")
-
-    filename_no_ext = csv_name[len("speed_distance_"):-4]  # 去掉前缀和 .csv
+    filename_no_ext = csv_name[:-len("_database.csv")]  # 去掉前缀和 .csv
 
     # 构造对应的 mp4 路径
     mp4_path = os.path.join(dir_path, f"{filename_no_ext}.mp4")
