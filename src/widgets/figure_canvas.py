@@ -15,7 +15,8 @@ class VisCanvas(FigureCanvas):
     def __init__(self):
         self.fig, self.ax = plt.subplots()
         super().__init__(self.fig)
-        
+        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
+
         self.delta_texts = []
         self.analyzers:List[SDAnalyzer] = []
 
@@ -46,7 +47,31 @@ class VisCanvas(FigureCanvas):
         if event.inaxes != self.ax:  # 确保鼠标在目标坐标轴内
             return
         self.mouse_distance = event.xdata
-    
+        
+        distance = self.mouse_distance
+        
+        for index,instance in enumerate(self.analyzers):
+            instance.set_current_index_by_distance(distance)
+            instance.draw_point(distance)
+            if self._analyzer_update_cb[index] is not None:
+                self._analyzer_update_cb[index](instance, index)
+        
+        annotation_text = \
+            f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_current_accel()/ 9.8:.2f}" for i, item in enumerate(self.analyzers))
+        
+        if not hasattr(self, "_hover_anno"):
+            self._hover_anno = self.ax.text(
+                0.005, 0.02, annotation_text,
+                transform=self.ax.transAxes,
+                ha="left", va="bottom",
+                color="white",
+                fontsize=9,
+                bbox=dict(facecolor="#4f4f4f", alpha=0.6, boxstyle="round,pad=0.3")
+            )
+        else:
+            self._hover_anno.set_text(annotation_text)
+        self.draw_idle()
+
     """func(instance,i)"""
     def register_instance_on_hover(self, func, i):
         self._analyzer_update_cb[i] = func
@@ -68,27 +93,8 @@ class VisCanvas(FigureCanvas):
         if self.cursor is not None:
             self.cursor.remove()
 
-        self.cursor = mplcursors.cursor([i.line for i in self.analyzers], hover=mplcursors.HoverMode.Transient)
-        @self.cursor.connect("add")
-        def on_hover(sel):            
-            distance = self.mouse_distance
-            for index,instance in enumerate(self.analyzers):
-                instance.set_current_index_by_distance(distance)
-                instance.draw_point(distance)
-                if self._analyzer_update_cb[index] is not None:
-                    self._analyzer_update_cb[index](instance, index)
-            
-            annotation_text = \
-                f'distance: {distance:.2f}m\n' + '\n'.join(f" V{i}: {item.get_speed(distance):.2f}km/h, a: {item.get_current_accel()/ 9.8:.2f}" for i, item in enumerate(self.analyzers))
-
-            sel.annotation.set_text(annotation_text)
-            sel.annotation.get_bbox_patch().set(fc="#4f4f4f", alpha=0.6)
-            # sel.annotation.get_bbox_patch().set_edgecolor(line.get_color())
-            sel.annotation.set_color("white")
-            sel.annotation.set_fontsize(9)
-            sel.annotation.arrow_patch.set(arrowstyle="-", alpha=.5)
-
         self.ax.legend()
+        self.draw_idle()
         return analyzer
     
     def on_pick(self, event):
@@ -196,3 +202,8 @@ class VisCanvas(FigureCanvas):
                     bbox=dict(facecolor='white', alpha=0.6))
         self.delta_texts.append(txt)
         self.fig.canvas.draw_idle()
+    
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
+        self.draw_idle()

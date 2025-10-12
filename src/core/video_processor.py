@@ -11,7 +11,7 @@ import pandas as pd
 
 reader = None
 
-easy_err_number = [65, 75, 85, 95, 105, 115, 125, 135, 145, 150, 155, 165, 175, 185, 189, 205, 250, 255, 270, 280, 290]
+easy_err_number = [65, 75, 85, 95, 105, 115, 125, 135, 145, 150, 155, 165, 168, 175, 180, 185, 189, 205, 250, 255, 270, 280, 290]
 
 def get_number(display_frame, on_err_cb = None):
     global reader
