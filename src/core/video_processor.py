@@ -104,6 +104,7 @@ class TimeSpeedProcessor():
         self.last_speed = number
         self.time_speed.append((self.index * self.time_interval, number, frame_index))
         self.index += 1
+        print(number)
         return number
             
     def get_df_data(self):

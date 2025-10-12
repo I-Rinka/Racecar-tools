@@ -57,6 +57,7 @@ class ROIWindow(QMainWindow):
         
         self.slider = VideoSlider(0, self.ocr_canvas.video_frame_count())
         self.slider.frameChanged.connect(self.ocr_canvas.paly_video_at_index)
+        self.slider.setFocusPolicy(Qt.NoFocus)
         
         layout.addWidget(self.ocr_canvas)
         layout.addWidget(self.slider)
@@ -66,9 +67,10 @@ class ROIWindow(QMainWindow):
         
         self.is_paused = False
         
-        base = os.path.basename(video_path)
-        name,_ = os.path.splitext(base)
+        video_base = os.path.basename(video_path)
+        name,_ = os.path.splitext(video_base)
         self.name = name
+        self.save_path = os.path.join(video_base, self.name+"_database.csv")
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.play_video)
@@ -78,11 +80,15 @@ class ROIWindow(QMainWindow):
         
         self.q_thread = VideoAnalysisThread(self.ocr_canvas.get_roi_video_copy(), TimeSpeedProcessor(self.ocr_canvas.video_frame_rate()))
         self.q_thread.processed.connect(self.play_processed_frame)
+        self.q_thread.finished.connect(self.finish)
         
     def play_processed_frame(self, result):
         idx = result["index"]
         self.slider.set_frame(idx)
         self.ocr_canvas.paly_video_at_index(idx)
+    
+    def finish(self):
+        self.q_thread.processor.write_csv(self.save_path)
     
     def play_video(self):
         self.ocr_canvas.play_video()
@@ -127,9 +133,9 @@ class ROIWindow(QMainWindow):
         if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
             # self.processor.write_csv(self.name+"_database.csv")
             self.q_thread.get_result()
-            self.q_thread.processor.write_csv(self.name+"_database.csv")
+            self.q_thread.processor.write_csv(self.save_path)
             self.timer_play_or_pause(True)
-            QMessageBox.information(self, "保存成功", f"文件已保存到:{os.path.join(os.getcwd(), self.name+"_database.csv")}")
+            QMessageBox.information(self, "保存成功", f"文件已保存到:{self.save_path}")
             
         if event.key() == Qt.Key.Key_Left and not self.ocr_canvas.roi_selected:
             self.ocr_canvas.video_paly_back()
