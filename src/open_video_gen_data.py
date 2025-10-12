@@ -70,7 +70,7 @@ class ROIWindow(QMainWindow):
         video_base = os.path.basename(video_path)
         name,_ = os.path.splitext(video_base)
         self.name = name
-        self.save_path = os.path.join(video_base, self.name+"_database.csv")
+        self.save_path = os.path.join(os.path.dirname(video_path), self.name+"_database.csv")
         print(self.save_path)
         
         self.timer = QTimer()

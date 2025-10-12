@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from plot_page import PlotTab
-from drop_video_and_process_page import VideoDropAndProcessWidget
+from roi_page import VideoDropAndProcessWidget
 
 # --------------------- 自定义可拖拽 TabBar ---------------------
 class DraggableTabBar(QTabBar):

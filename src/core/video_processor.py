@@ -14,7 +14,8 @@ reader = None
 easy_err_number = [65, 105, 115, 125, 135, 150, 155, 165, 205, 250, 255]
 
 def get_number(display_frame, on_err_cb = None):
-    if reader == None:
+    global reader
+    if reader is None:
         reader = easyocr.Reader(['ch_sim'], gpu=True)
     
     result = reader.readtext(display_frame, allowlist = '0123456789')
@@ -101,7 +102,6 @@ class TimeSpeedProcessor():
 
         def func_err_cb1():
             print("Int data not work data")
-            
             self.ez_ocr_able_to_process = False
         
         def func_err_cb2():
@@ -122,7 +122,6 @@ class TimeSpeedProcessor():
         self.last_speed = number
         self.time_speed.append((self.index * self.time_interval, number, frame_index))
         self.index += 1
-        print(number)
         return number
             
     def get_df_data(self):
