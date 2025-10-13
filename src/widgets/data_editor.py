@@ -81,7 +81,8 @@ class DataEditor(QWidget):
         self.table.itemChanged.connect(self.on_item_changed)
         self.table.installEventFilter(self)
         # 当鼠标在表格的单元格上移动时触发（需要 setMouseTracking = True 在父级或表格中通常已经启用）
-        self.table.cellEntered.connect(self.on_cell_hovered)
+        # self.table.cellEntered.connect(self.on_cell_hovered)
+        self.table.cellClicked.connect(self.on_cell_hovered)
         self.func = None
 
     # -------------------
