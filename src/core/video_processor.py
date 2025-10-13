@@ -11,7 +11,9 @@ import pandas as pd
 
 reader = None
 
-easy_err_number = [65, 75, 85, 95, 105, 115, 125, 135, 145, 150, 155, 165, 168, 175, 180, 185, 189, 205, 250, 255, 270, 280, 290]
+easy_err_number = [140.0, 151.0, 165.0, 244.0, 247.0]
+# 24 -> 244, 247 -> 2417
+# easy_err_number = [65, 75, 85, 95, 105, 115, 125, 135, 145, 150, 155, 165, 168, 175, 180, 185, 189, 205, 250, 255, 270, 280, 290]
 
 def get_number(display_frame, on_err_cb = None):
     global reader
@@ -36,7 +38,7 @@ def get_number(display_frame, on_err_cb = None):
     return number
 
 def get_number_float(display_frame, on_err_cb = None):
-    custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.'
+    custom_config = r'--oem 3 --psm 6 outputbase digits'
     text = pytesseract.image_to_string(display_frame, config=custom_config)
     clean_text = re.sub(r'[^0-9.]', '', text)
     value = 0.0
@@ -95,31 +97,10 @@ class TimeSpeedProcessor():
         self.ez_ocr_able_to_process = True
         self.last_speed = -1
         self.df = None
-    
+        
     def process_frame(self, frame: cv2.Mat, frame_index = -1):
-        if frame_index == -1:
-            frame_index = self.index
-
-        def func_err_cb1():
-            print("Int data not work data")
-            self.ez_ocr_able_to_process = False
-        
-        def func_err_cb2():
-            print("Can't recognize the data")
-        
-        if self.ez_ocr_able_to_process == True:
-            number = get_number(frame, func_err_cb1)
-            if number > 1000:
-                self.ez_ocr_able_to_process = False
-            
-        if self.ez_ocr_able_to_process == False:
-            number = get_number_float(frame, func_err_cb2)
-        
-        if self.last_speed > 0 and math.fabs(number - self.last_speed) > 50:
-            array = [65, 115, 155, 105, 205, 150, 250, 135, 165]
-            number = min(array, key=lambda v: abs(v - self.last_speed))
-    
-        self.last_speed = number
+        number = get_number_float(frame, None)
+        print(number)
         self.time_speed.append((self.index * self.time_interval, number, frame_index))
         self.index += 1
         return number

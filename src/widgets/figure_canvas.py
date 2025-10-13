@@ -167,6 +167,12 @@ class VisCanvas(FigureCanvas):
                 index_list=selected_idx,
                 save_callback=self.exit_editor
             )
+            
+            def change_index(index):
+                self.analyzers[0].current_index = index
+                self._analyzer_update_cb[0](self.analyzers[0], 0)
+                
+            self.editor.register_hover_back_index(change_index)
             self.editor.show()
             return
         

@@ -47,16 +47,38 @@ class PltMainWindow(QMainWindow):
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key.Key_Control:
             self.canvas.press_ctrl = False
-        return super().keyReleaseEvent(event)
     
+        return super().keyReleaseEvent(event)
     def keyPressEvent(self, event):
         if len(self.canvas.analyzers) == 1:
             if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
+                
+                def is_file_in_use(path: str) -> bool:
+                    """判断文件是否被其他进程占用"""
+                    if not os.path.exists(path):
+                        return False
+
+                    try:
+                        # Windows：O_EXCL|O_RDWR 在文件被其他进程占用时会报错
+                        # Linux/macOS：虽然文件系统允许多进程读，但会检测到锁冲突
+                        fd = os.open(path, os.O_RDWR | os.O_EXCL)
+                        os.close(fd)
+                        return False  # 能打开说明没被占用
+                    except OSError:
+                        return True    # 打开失败，说明文件正被占用
+
                 name = self.canvas.analyzers[0].name
                 file_path, _ = QFileDialog.getSaveFileName(self, "保存数据文件", os.path.expanduser(f"~/{name}.csv"), "CSV 文件 (*.csv)")
                 if file_path:
-                    df = self.canvas.analyzers[0].df
-                    df.to_csv(file_path, index=False, encoding="utf-8-sig")
+                    if is_file_in_use(file_path):
+                         QMessageBox.critical(
+                            self,
+                            "文件被占用",
+                            f"文件：\n{file_path}\n\n当前被其他程序占用，请关闭后再试。",
+                        )
+                    else:
+                        df = self.canvas.analyzers[0].df
+                        df.to_csv(file_path, index=False, encoding="utf-8-sig")
                 
         step = 10
         idx = self.canvas.selected_index
