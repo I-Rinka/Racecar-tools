@@ -237,10 +237,11 @@ class PltMainWindow(QMainWindow):
             self.videos[i].update_frame(vis.get_current_frame_index())
             self.accel_canvas.draw_idle()
             self.canvas.draw_idle()
+            self.time_canvas.draw_idle()
             
         self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
         self.accel_canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
-        # self.time_canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
+        self.time_canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
         video_canvas.set_frame_index(initial_idx)
         
         if len(self.canvas.analyzers) == 2:

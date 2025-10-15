@@ -89,18 +89,79 @@ class TimeDiferenceCanvas(FigureCanvas):
 
         self.ax.set_xlabel("Distance(m)")
         self.ax.set_ylabel("time(s)")
-
+        self.annotation = self.ax.annotate(
+                        "",
+                        xy=(0, 0),
+                        xytext=(15, 15),
+                        textcoords="offset points",
+                        color="white",
+                        fontsize=9,
+                        bbox=dict(facecolor="#4f4f4f", alpha=0.6, boxstyle="round,pad=0.3"),
+                        arrowprops=dict(arrowstyle="->", color="black"),
+                        ha="center"
+                    )
+        self.annotation.set_visible(False)
+        self.fig.canvas.mpl_connect("motion_notify_event", self.on_hover)        
         self.line = None
         
     def add_data(self, df):
         if self.line is None:
-            self.line, = self.ax.plot(df['distance'], df['time_d'])
+            self.line, = self.ax.plot(df['distance'], df['time_d'], picker=5)
             return 
         self.line.set_data(df['distance'], df['time_d'])
         
+    def register_instance_on_hover(self, func, i):
+        self._analyzer_update_cb[i] = func 
+                     
     def add_sda(self, analyzer: SDAnalyzer):
         self.analyzers.append(analyzer)
         self._analyzer_update_cb.append(None)
+        
+    def on_hover(self, event):
+        """当鼠标移动到曲线上方时显示提示框"""
+        if self.line is None or event.inaxes != self.ax:
+            return
+
+        xdata, ydata = self.line.get_data()
+        if len(xdata) == 0:
+            return
+
+        # 找到最近的点
+        x = event.xdata
+        if x is None:
+            return
+        
+        for index,instance in enumerate(self.analyzers):
+            instance.set_current_index_by_distance(x)
+            instance.draw_point(x)
+            if self._analyzer_update_cb[index] is not None:
+                self._analyzer_update_cb[index](instance, index)
+                
+        idx = np.searchsorted(xdata, x)
+        idx = np.clip(idx, 1, len(xdata) - 1)
+        left, right = idx - 1, idx
+        # 选取更接近鼠标的一个点
+        if abs(xdata[left] - x) < abs(xdata[right] - x):
+            idx = left
+        else:
+            idx = right
+
+        x_near, y_near = xdata[idx], ydata[idx]
+
+        # 判断距离是否太远（避免离线太远也显示）
+        dx = abs(event.xdata - x_near)
+        dy = abs(event.ydata - y_near)
+        if dx > (xdata[-1] - xdata[0]) * 0.01 or dy > (max(ydata) - min(ydata)) * 0.05:
+            self.annotation.set_visible(False)
+            self.draw_idle()
+            return
+
+        # 设置tooltip文本和位置
+        text = f"Distance: {x_near:.2f} m\nTime: {y_near:.3f} s"
+        self.annotation.xy = (x_near, y_near)
+        self.annotation.set_text(text)
+        self.annotation.set_visible(True)
+        self.draw_idle()
 
 class VisCanvas(FigureCanvas):
     def __init__(self):
