@@ -24,7 +24,7 @@ def local_slope(x_arr, y_arr, idx, window=5):
     return slope
 
 class SDAnalyzer():
-    def __init__(self, axes:Axes, speed_distance_path=None, name: str=None, data_frame: pd.DataFrame = None):
+    def __init__(self, axes:Axes, speed_distance_path=None, name: str=None, data_frame: pd.DataFrame = None, color=None):
         if data_frame is not None:
             self.df = data_frame
         else:
@@ -38,8 +38,10 @@ class SDAnalyzer():
 
         self.initial_frame = self.df['frame'][0]
 
-        self.line, = self.ax.plot(self.df['distance'], self.df['speed'], label=name, picker=True)
+        self.color = color
+        self.line = None
         self.point = None
+        self.accel_point = None
 
         self.build_sd()
         self.current_index = 0
@@ -49,7 +51,12 @@ class SDAnalyzer():
         self._sd = SortedDict()
         for i,distance in enumerate(self.df['distance']):
             if self._sd.get(distance) is None:
-                self._sd[distance] = i 
+                self._sd[distance] = i
+    
+    def draw_line(self, ax:Axes = None):
+        if ax is None:
+            ax = self.ax
+        self.line, = ax.plot(self.df['distance'], self.df['speed'], label=self.name, picker=True, color=self.color)
 
     def adjust_distance(self, step):
         self.df['distance'] = self.df['distance'] + step
@@ -57,7 +64,22 @@ class SDAnalyzer():
         self.build_sd()
         
     def get_current_distance(self):
-        return self.df["distance"][self.current_index]
+        return self.df["distance"][self.current_index]        
+
+    def draw_accel_point(self, distance, ax:Axes):
+        if ax is None:
+            ax = self.ax
+        if self.accel_point is None:
+            self.accel_point, = ax.plot([], [], 'o', markersize=6, alpha=0.6,
+                                    markerfacecolor=self.line.get_color(),
+                                    markeredgecolor='white',
+                                    markeredgewidth=1)
+        if distance == -1:
+            self.accel_point.set_data([self.df["distance"][self.current_index]], [self.df['accel'][self.current_index]])
+
+        index = self.get_index(distance)
+        if index:
+            self.accel_point.set_data([distance], [self.df['accel'][index]])
         
     def draw_point(self, distance=-1):
         if self.point is None:
@@ -130,3 +152,26 @@ class SDAnalyzer():
 
         closest_key = min(candidates, key=lambda k: abs(k - distance))
         return self._sd[closest_key]
+
+def get_time_differences(sd1:SDAnalyzer, sd2:SDAnalyzer):
+    i1 = sd1.get_index(0)
+    i2 = sd2.get_index(0)
+    
+    distances = []
+    times = []
+    
+    t1 = sd1.df['time'][i1]
+    t2 = sd1.df['time'][i2]
+    for i in range(i1, len(sd1.df)):
+        distance = sd1.df["distance"][i]
+        i1 = sd1.get_index(distance)
+        i2 = sd2.get_index(distance)
+        if i1 is None or i2 is None:
+            continue
+        t1_df = sd1.df['time'][i1] - t1
+        t2_df = sd2.df['time'][i2] - t2
+        
+        distances.append(distance)
+        times.append(t1_df - t2_df)
+        
+    return pd.DataFrame({"time_d":times, "distance": distances})

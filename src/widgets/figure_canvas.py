@@ -11,18 +11,108 @@ from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout
 from core.video_processor import regen_df_by_time_speed
 import numpy as np
 
+colors = ["#1f77b4","#ff7f0e","#d62728","#9467bd"]
+
+class AccelCanvas(FigureCanvas):
+    def __init__(self):
+        self.fig, self.ax = plt.subplots()
+        
+        super().__init__(self.fig)
+        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.97, bottom=0.2)
+
+        self.delta_texts = []
+        self.analyzers:List[SDAnalyzer] = []
+
+        self.ax.set_xlabel("Distance(m)")
+        self.ax.set_ylabel("Acceleration (g)")
+
+        self.selected_index = -1
+
+        self.mouse_distance = 0
+        
+        self._analyzer_update_cb = []
+        self.mpl_connect('motion_notify_event', self.on_mouse_move)
+        
+        self.lines = []
+        self.h_line = None
+        
+    def register_instance_on_hover(self, func, i):
+        self._analyzer_update_cb[i] = func       
+        
+    def add_data_by_sda(self, analyzer: SDAnalyzer):
+        self.analyzers.append(analyzer)
+        self._analyzer_update_cb.append(None)
+        l = self.ax.plot(analyzer.df['distance'], analyzer.df['accel'], label=analyzer.name, color=analyzer.color)
+        self.lines.append(l)
+        self.draw_idle()
+        
+    def on_mouse_move(self, event):
+        if event.inaxes != self.ax:  # 确保鼠标在目标坐标轴内
+            return
+        self.mouse_distance = event.xdata
+        
+        distance = self.mouse_distance
+        
+        for index,instance in enumerate(self.analyzers):
+            instance.set_current_index_by_distance(distance)
+            
+            instance.draw_accel_point(distance, self.ax)
+            instance.draw_point(distance)
+            if self._analyzer_update_cb[index] is not None:
+                self._analyzer_update_cb[index](instance, index)
+        
+        annotation_text = \
+            f'distance: {distance:.2f}m\n' + '\n'.join(f"{item.name} a: {item.get_current_accel()/ 9.8:.2f}" for _, item in enumerate(self.analyzers))
+        
+        if not hasattr(self, "_hover_anno"):
+            self._hover_anno = self.ax.text(
+                0.005, 0.02, annotation_text,
+                transform=self.ax.transAxes,
+                ha="left", va="bottom",
+                color="white",
+                fontsize=9,
+                bbox=dict(facecolor="#4f4f4f", alpha=0.6, boxstyle="round,pad=0.3")
+            )
+        else:
+            self._hover_anno.set_text(annotation_text)
+        self.draw_idle()
+
+class TimeDiferenceCanvas(FigureCanvas):
+    def __init__(self):
+        self.fig, self.ax = plt.subplots()
+        super().__init__(self.fig)
+        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.97, bottom=0.2)
+
+        self.delta_texts = []
+        self.analyzers:List[SDAnalyzer] = []
+        self._analyzer_update_cb = []
+
+        self.ax.set_xlabel("Distance(m)")
+        self.ax.set_ylabel("time(s)")
+
+        self.line = None
+        
+    def add_data(self, df):
+        if self.line is None:
+            self.line, = self.ax.plot(df['distance'], df['time_d'])
+            return 
+        self.line.set_data(df['distance'], df['time_d'])
+        
+    def add_sda(self, analyzer: SDAnalyzer):
+        self.analyzers.append(analyzer)
+        self._analyzer_update_cb.append(None)
+
 class VisCanvas(FigureCanvas):
     def __init__(self):
         self.fig, self.ax = plt.subplots()
         super().__init__(self.fig)
-        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
+        self.fig.subplots_adjust(left=0.05, right=0.95, top=0.8, bottom=0.2)
 
         self.delta_texts = []
         self.analyzers:List[SDAnalyzer] = []
 
         self.ax.set_xlabel("Distance(m)")
         self.ax.set_ylabel("Speed(km/h)")
-        self.ax.set_title("Select region to calculate Δt = t1 - t2")
 
         self.selected_index = -1
 
@@ -77,11 +167,13 @@ class VisCanvas(FigureCanvas):
         self._analyzer_update_cb[i] = func
         
     def add_instance_by_df(self, name, data_frame)-> SDAnalyzer:
-        analyzer = SDAnalyzer(self.ax, name=name, data_frame=data_frame)
+        analyzer = SDAnalyzer(self.ax, name=name, data_frame=data_frame, color=colors[len(self.analyzers)])
+        analyzer.draw_line()
         return self.__add_instance(analyzer)
     
     def add_instance_by_file(self, file) -> SDAnalyzer:
-        analyzer = SDAnalyzer(self.ax, speed_distance_path=file)
+        analyzer = SDAnalyzer(self.ax, speed_distance_path=file, color=colors[len(self.analyzers)])
+        analyzer.draw_line()
         return self.__add_instance(analyzer)
     
     def __add_instance(self, analyzer) -> SDAnalyzer:

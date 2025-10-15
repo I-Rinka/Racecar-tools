@@ -94,12 +94,12 @@ class PlotTab(QWidget):
                         video_path = get_video_path(path)
                         instance = self.plt.add_instance(path, video_path)
                     except Exception as e:
-                        instance = self.plt.add_data_frame(path)
-                        self.initial_idx = instance.get_initial_frame()
-                        
-                        self.pending_csv = path
-                        QMessageBox.information(self, "提示", f"CSV 文件已添加：{path}，请拖入对应 MP4 文件配对，或者拖入其他csv文件")
-                        return
+                            instance = self.plt.add_data_frame(path)
+                            self.initial_idx = instance.get_initial_frame()
+                            
+                            self.pending_csv = path
+                            QMessageBox.information(self, "提示", f"CSV 文件已添加：{path}，请拖入对应 MP4 文件配对，或者拖入其他csv文件")
+                            return
 
                 # 🎥 拖入 MP4
                 if ext == '.mp4':

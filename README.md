@@ -2,9 +2,14 @@
 
 Some tools to analyze racing cars' video, including OCR and speed-distance graph generating.
 
-Dependencies:
+Solve dependencies:
 
-```bash
-pip3 install torch torchvision torchaudio --index-url <https://download.pytorch.org/whl/cu126> 
-pip3 install matplotlib mplcursors opencv-python easyocr
 ```
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r ./requirements.txt
+```
+
+Run:
+
+`python3 ./src/main.py`

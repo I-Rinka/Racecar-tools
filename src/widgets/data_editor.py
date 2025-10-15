@@ -242,7 +242,7 @@ class DataEditor(QWidget):
             
             try:
                 number = float(number_str)
-                if number > 40.0 and number < 1000.0:
+                if number > 40.0 and number < 500.0:
                     continue
             except Exception as e:
                 pass

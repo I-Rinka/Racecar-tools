@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import easyocr
 import csv
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:/Users/I_Rin\AppData/Local/Programs/Tesseract-OCR/tesseract.exe"
 import re
 import math
 import pandas as pd

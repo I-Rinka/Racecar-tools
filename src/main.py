@@ -31,7 +31,6 @@ class DraggableTabBar(QTabBar):
         # 阻止 QTabWidget 的默认切换
         event.accept()
         
-
     def mouseReleaseEvent(self, event):
         if self.mouse_pressed and event.button() == Qt.LeftButton:
             release_index = self.tabAt(event.pos())

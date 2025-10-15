@@ -1,0 +1,9 @@
+easyocr==1.7.2
+matplotlib==3.10.7
+mplcursors==0.7
+numpy==2.3.3
+pandas==2.3.3
+PyQt5==5.15.11
+pytesseract==0.3.13
+scipy==1.16.2
+sortedcontainers==2.4.0

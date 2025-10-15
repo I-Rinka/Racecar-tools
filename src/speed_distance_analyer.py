@@ -7,9 +7,9 @@ from PyQt5.QtCore import QTimer, Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from scipy.signal import savgol_filter
-from widgets.figure_canvas import VisCanvas
+from widgets.figure_canvas import VisCanvas, TimeDiferenceCanvas, AccelCanvas
 from widgets.video_canvas import VideoCanvas
-from core.sd_analyzer import SDAnalyzer
+from core.sd_analyzer import SDAnalyzer, get_time_differences
 from typing import List
 import os
 
@@ -31,6 +31,23 @@ class PltMainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
+        
+        top_layout = QHBoxLayout()
+        layout.addLayout(top_layout)
+        top_layout.addStretch()
+        top_layout.setAlignment(Qt.AlignRight)
+        
+        self.show_accel_button = QPushButton("show acceleration")
+        self.show_accel_button.clicked.connect(self.show_accel)
+        self.show_accel_button.setFixedSize(200, 30)
+        self.show_accel_button.setStyleSheet("font-size: 15px;")
+        top_layout.addWidget(self.show_accel_button)
+        
+        self.show_time_button = QPushButton("show time difference")
+        self.show_time_button.clicked.connect(self.show_t_canvas)
+        self.show_time_button.setFixedSize(220, 30)
+        self.show_time_button.setStyleSheet("font-size: 15px;")
+        top_layout.addWidget(self.show_time_button)
 
         self.playing = False
         
@@ -38,17 +55,61 @@ class PltMainWindow(QMainWindow):
         self.canvas.setMinimumHeight(200)
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.canvas, stretch=1)
+        
+        self.accel_canvas = AccelCanvas()
+        self.accel_canvas.setMinimumHeight(100)
+        self.accel_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.accel_canvas, stretch=1)
+        self.show_accel_canvas = False
+        # self.show_accel_canvas = True
+        self.accel_canvas.hide()
+        
+        self.time_canvas = TimeDiferenceCanvas()
+        self.time_canvas.setMinimumHeight(100)
+        self.time_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.time_canvas, stretch=1)
+        self.show_time_canvas = False
+        self.time_canvas.hide()
 
         # ---- 下方视频区域 (自动2x2布局) ----
         self.video_container = QWidget()
         self.video_layout = QGridLayout(self.video_container)
         layout.addWidget(self.video_container, stretch=2)
+    
+    def show_t_canvas(self):
+        self.show_time_canvas = not self.show_time_canvas
+        if self.show_time_canvas:
+            self.time_canvas.show()
+            self.show_time_button.setText("hide time difference")
+            self.update_time_data()
+        else:
+            self.time_canvas.hide()
+            self.show_time_button.setText("show time difference")
+    
+    def show_accel(self):
+        self.show_accel_canvas = not self.show_accel_canvas
+        if self.show_accel_canvas:
+            self.accel_canvas.show()
+            self.show_accel_button.setText("hide acceleration")
+        else:
+            self.accel_canvas.hide()
+            self.show_accel_button.setText("show acceleration")
         
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key.Key_Control:
             self.canvas.press_ctrl = False
     
         return super().keyReleaseEvent(event)
+    
+    def update_time_data(self):
+        if self.show_time_canvas:
+            if len(self.canvas.analyzers) == 2:
+                sd1 = self.canvas.analyzers[0]
+                sd2 = self.canvas.analyzers[1]
+                data = get_time_differences(sd1, sd2)
+                self.time_canvas.add_data(data)
+                self.time_canvas.draw_idle()
+    
     def keyPressEvent(self, event):
         if len(self.canvas.analyzers) == 1:
             if event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
@@ -87,6 +148,7 @@ class PltMainWindow(QMainWindow):
                 self.canvas.analyzers[idx].adjust_distance(-step)
             elif event.key() == Qt.Key.Key_Right:
                 self.canvas.analyzers[idx].adjust_distance(step)
+            self.update_time_data()
             self.canvas.draw()
             
         if event.key() == Qt.Key.Key_Escape:
@@ -173,9 +235,16 @@ class PltMainWindow(QMainWindow):
         self.videos.append(video_canvas)
         def update_video(vis:SDAnalyzer, i:int):
             self.videos[i].update_frame(vis.get_current_frame_index())
+            self.accel_canvas.draw_idle()
+            self.canvas.draw_idle()
             
         self.canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
+        self.accel_canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
+        # self.time_canvas.register_instance_on_hover(update_video, len(self.videos) - 1)
         video_canvas.set_frame_index(initial_idx)
+        
+        if len(self.canvas.analyzers) == 2:
+            self.update_time_data()
         
         self.refresh_video_layout()
         self.regist_plt_point_animation()
@@ -187,12 +256,18 @@ class PltMainWindow(QMainWindow):
     def add_instance(self, path, video_path):
         sd_instance = self.canvas.add_instance_by_file(path)
         initial_idx = sd_instance.get_initial_frame()
+        self.accel_canvas.add_data_by_sda(sd_instance)
+        self.time_canvas.add_sda(sd_instance)
         self.add_video(video_path, initial_idx)
+        return sd_instance
 
     def add_instance_by_data_frame(self, video_path, df):
         sd_instance = self.canvas.add_instance_by_df(video_path, df)
         initial_idx = sd_instance.get_initial_frame()
+        self.accel_canvas.add_data_by_sda(sd_instance)
+        self.time_canvas.add_sda(sd_instance)
         self.add_video(video_path, initial_idx)
+        return sd_instance
     
     def add_data_frame(self, path):
         res = self.canvas.add_instance_by_file(path)
