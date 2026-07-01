@@ -111,11 +111,18 @@ class SDAnalyzer():
 
     def set_current_index_by_distance(self, distance:float):
         idx = self.get_index(distance)
-        self.current_index = idx if idx is not None else 0
+        if idx is None:
+            idx = 0
+        self.current_index = idx
         return self.df['distance'][idx]
     
     def inc_current_index(self):
-        self.current_index = self.current_index + 1
+        self.current_index = min(self.current_index + 1, len(self.df) - 1)
+
+    def set_current_index_by_frame(self, frame_idx):
+        frames = self.df['frame'].values
+        idx = np.searchsorted(frames, frame_idx, side='right') - 1
+        self.current_index = max(0, min(idx, len(self.df) - 1))
 
     def get_current_accel(self, window = 5):
         if self.df.get('accel') is not None:

@@ -166,33 +166,26 @@ class PltMainWindow(QMainWindow):
                 v.set_playing(self.playing)
             
     def resizeEvent(self, event):
-        for v in self.videos:
-            v.update_frame()
-
         super().resizeEvent(event)
     
     def regist_plt_point_animation(self):
         if len(self.videos) != len(self.canvas.analyzers):
             return
 
-        fps = [v.video.get_frame_rate() for v in self.videos]
-        min_idx = int(np.argmin(fps))
-        for i,instance in enumerate(self.canvas.analyzers):
-            vis = instance
-            def point_update(s):
-                vis.inc_current_index()
-                vis.draw_point()
-            self.videos[i].register_frame_update_func(point_update)
-        
-        # 只有一个函数更新，优化性能
-        def slowest_update_to_draw(s):
-            vis = self.canvas.analyzers[min_idx]
-            vis.inc_current_index()
+        for i, instance in enumerate(self.canvas.analyzers):
+            video = self.videos[i]
 
-            vis.draw_point()
-            self.canvas.update_plot()
-            
-        self.videos[min_idx].register_frame_update_func(slowest_update_to_draw)
+            def make_update(analyzer, vid, should_redraw):
+                def point_update(s):
+                    frame_idx = vid.get_current_video_frame_index()
+                    analyzer.set_current_index_by_frame(frame_idx)
+                    analyzer.draw_point()
+                    if should_redraw:
+                        self.canvas.update_plot()
+                return point_update
+
+            is_last = (i == len(self.canvas.analyzers) - 1)
+            video.register_frame_update_func(make_update(instance, video, is_last))
 
     def refresh_video_layout(self):
         """根据当前视频数量自动重新布局"""
@@ -222,13 +215,12 @@ class PltMainWindow(QMainWindow):
                 row, col = divmod(idx, 2)
                 self.video_layout.addWidget(label, row, col)
 
-        # 确保布局均分
-        if count > 2:
-            for row in range(2):
-                self.video_layout.setRowStretch(row, 1)
-            
-        for col in range(2):
-            self.video_layout.setColumnStretch(col, 1)
+        cols = 2 if count >= 2 else 1
+        rows = (count + cols - 1) // cols
+        for r in range(rows):
+            self.video_layout.setRowStretch(r, 1)
+        for c in range(cols):
+            self.video_layout.setColumnStretch(c, 1)
 
     def add_video(self, video_path, initial_idx):
         video_canvas = VideoCanvas(video_path)
