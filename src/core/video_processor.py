@@ -73,6 +73,8 @@ def get_accel(speeds:list, distance:list, window = 5):
     return res
 
 def regen_df_by_time_speed(df: pd.DataFrame):
+    if "time" not in df:
+        return df
     df = df.dropna(how='any')
     distance = [0]
     for i in range(1, len(df)):
