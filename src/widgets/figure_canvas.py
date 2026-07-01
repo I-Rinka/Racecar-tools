@@ -37,8 +37,10 @@ class AccelCanvas(FigureCanvas):
         self.h_line = None
         
     def register_instance_on_hover(self, func, i):
-        self._analyzer_update_cb[i] = func       
-        
+        while len(self._analyzer_update_cb) <= i:
+            self._analyzer_update_cb.append(None)
+        self._analyzer_update_cb[i] = func
+
     def add_data_by_sda(self, analyzer: SDAnalyzer):
         self.analyzers.append(analyzer)
         self._analyzer_update_cb.append(None)
@@ -111,8 +113,10 @@ class TimeDiferenceCanvas(FigureCanvas):
         self.line.set_data(df['distance'], df['time_d'])
         
     def register_instance_on_hover(self, func, i):
-        self._analyzer_update_cb[i] = func 
-                     
+        while len(self._analyzer_update_cb) <= i:
+            self._analyzer_update_cb.append(None)
+        self._analyzer_update_cb[i] = func
+
     def add_sda(self, analyzer: SDAnalyzer):
         self.analyzers.append(analyzer)
         self._analyzer_update_cb.append(None)
@@ -223,8 +227,9 @@ class VisCanvas(FigureCanvas):
             self._hover_anno.set_text(annotation_text)
         self.draw_idle()
 
-    """func(instance,i)"""
     def register_instance_on_hover(self, func, i):
+        while len(self._analyzer_update_cb) <= i:
+            self._analyzer_update_cb.append(None)
         self._analyzer_update_cb[i] = func
         
     def add_instance_by_df(self, name, data_frame)-> SDAnalyzer:
@@ -323,7 +328,8 @@ class VisCanvas(FigureCanvas):
             
             def change_index(index):
                 self.analyzers[0].current_index = index
-                self._analyzer_update_cb[0](self.analyzers[0], 0)
+                if self._analyzer_update_cb[0] is not None:
+                    self._analyzer_update_cb[0](self.analyzers[0], 0)
                 
             self.editor.register_hover_back_index(change_index)
             self.editor.show()

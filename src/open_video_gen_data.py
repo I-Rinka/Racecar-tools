@@ -17,16 +17,27 @@ class VideoAnalysisThread(QThread):
         self.processor = processr
 
     def run(self):
-        # 模拟耗时分析
+        BATCH_SIZE = 8
         while self.running:
-            frame = self.roi.get_next_processed_frame()
-            
-            if frame is None:
-                self.finished.emit({"result":self.processor.get_df_data()})
+            batch = []
+            for _ in range(BATCH_SIZE):
+                frame = self.roi.get_next_processed_frame()
+                if frame is None:
+                    break
+                batch.append((frame, self.roi.get_cur_index() - 1))
+
+            if not batch:
+                self.finished.emit({"result": self.processor.get_df_data()})
                 return
 
-            number = self.processor.process_frame(frame, self.roi.get_cur_index() - 1)
-            self.processed.emit({"frame": frame, "number": number, "index": self.roi.get_cur_index() - 1})
+            if len(batch) == 1:
+                frame, idx = batch[0]
+                number = self.processor.process_frame(frame, idx)
+                self.processed.emit({"frame": frame, "number": number, "index": idx})
+            else:
+                results = self.processor.process_batch(batch)
+                last_frame, last_idx = batch[-1]
+                self.processed.emit({"frame": last_frame, "number": results[-1][2], "index": last_idx})
     
     def set_new_value(self, idx, roi):
         self.roi.set_new_value(idx, roi)

@@ -23,6 +23,7 @@ class DraggableTabBar(QTabBar):
         super().__init__(parent)
         self._press_pos = None
         self.pressed_index = -1
+        self.mouse_pressed = False
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
