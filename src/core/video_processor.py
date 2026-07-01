@@ -36,6 +36,19 @@ def _sanity_check(value: float, last_speed: float) -> bool:
     return True
 
 
+def _try_trim_digits(value: float, last_speed: float) -> float:
+    s = str(int(round(value)))
+    if len(s) > 3:
+        trimmed = float(s[:-1])
+        if _sanity_check(trimmed, last_speed):
+            return trimmed
+    if len(s) > 2:
+        trimmed = float(s[1:])
+        if _sanity_check(trimmed, last_speed):
+            return trimmed
+    return value
+
+
 def smart_ocr(frame: np.ndarray, last_speed: float = -1.0) -> float:
     global _digit_cache
 
@@ -49,8 +62,15 @@ def smart_ocr(frame: np.ndarray, last_speed: float = -1.0) -> float:
         return tmpl_value
 
     if value > 0:
-        return value
-    return tmpl_value
+        fixed = _try_trim_digits(value, last_speed)
+        if _sanity_check(fixed, last_speed):
+            return fixed
+    if tmpl_value > 0:
+        fixed = _try_trim_digits(tmpl_value, last_speed)
+        if _sanity_check(fixed, last_speed):
+            return fixed
+
+    return value if value > 0 else tmpl_value
 
 
 def local_slope(x_arr, y_arr, idx, window=5):
